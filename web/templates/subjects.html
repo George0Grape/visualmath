@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --subtle: #9ca3af;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --sidebar-w: 260px;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,.10), 0 16px 40px rgba(0,0,0,.06);
+
+            --c0: #1e40af; --c0b: #dbeafe;
+            --c1: #065f46; --c1b: #d1fae5;
+            --c2: #991b1b; --c2b: #fee2e2;
+            --c3: #92400e; --c3b: #fef3c7;
+            --c4: #5b21b6; --c5: #0e7490;
+            --c6: #1d4ed8; --c7: #166534;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            height: 58px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .brand-mark {
+            width: 30px; height: 30px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: white;
+            font-family: 'Lora', serif;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .brand-name {
+            font-size: 17px;
+            font-weight: 500;
+            color: var(--text);
+            font-family: 'Lora', serif;
+        }
+        .brand-sep { color: var(--border); font-size: 20px; margin: 0 2px; }
+        .brand-section { font-size: 16px; color: var(--muted); font-weight: 400; }
+        .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+        .tb-btn {
+            height: 34px;
+            display: flex; align-items: center; gap: 6px;
+            padding: 0 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all .15s;
+        }
+        .tb-btn-ghost { background: none; color: var(--muted); }
+        .tb-btn-ghost:hover { background: var(--bg); color: var(--text); }
+        .tb-btn-primary { background: var(--accent); color: white; }
+        .tb-btn-primary:hover { background: #1d4ed8; }
+
+        /* ── Layout ── */
+        .layout { display: flex; flex: 1; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            flex-shrink: 0;
+            padding: 20px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--subtle);
+            padding: 14px 12px 6px;
+        }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 9px;
+            font-size: 13.5px;
+            font-weight: 400;
+            color: var(--muted);
+            text-decoration: none;
+            transition: all .15s;
+        }
+        .nav-link:hover { background: var(--border); color: var(--text); }
+        .nav-link.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+        .nav-icon { width: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: currentColor; }
+        .nav-dot {
+            width: 22px; height: 22px;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .nav-link span.label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nav-divider { height: 1px; background: var(--border); margin: 8px 12px; }
+        .sb-section { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--subtle); padding: 14px 10px 5px; }
+        .sb-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--muted); text-decoration: none; transition: all .15s; }
+        .sb-link:hover { background: var(--bg); color: var(--text); }
+        .sb-link svg { flex-shrink: 0; opacity: .75; }
+        .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+        /* ── Main ── */
+        .main { flex: 1; padding: 28px 28px 40px; min-width: 0; }
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .page-title {
+            font-family: 'Lora', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* ── Card grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            cursor: pointer;
+            transition: box-shadow .2s, transform .2s;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+        }
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card-head {
+            padding: 20px 20px 16px;
+            position: relative;
+            overflow: hidden;
+            min-height: 100px;
+        }
+        .card-head::after {
+            content: '';
+            position: absolute;
+            right: -20px; bottom: -30px;
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+        }
+        .card-head::before {
+            content: '';
+            position: absolute;
+            right: 20px; bottom: -50px;
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.07);
+        }
+        .card-title {
+            font-family: 'Lora', serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            line-height: 1.35;
+            position: relative;
+            z-index: 1;
+            max-width: calc(100% - 44px);
+        }
+        .card-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,.75);
+            margin-top: 5px;
+            position: relative;
+            z-index: 1;
+            max-width: calc(100% - 44px);
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .card-letter {
+            position: absolute;
+            bottom: 10px; right: 14px;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.22);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Lora', serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+            z-index: 1;
+        }
+
+        .card-body {
+            padding: 14px 18px;
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+            min-height: 54px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .dl-label { font-size: 11px; color: var(--subtle); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+        .dl-value { font-size: 13px; color: var(--text); font-weight: 500; }
+        .dl-value.muted { color: var(--muted); font-weight: 400; }
+
+        .card-foot {
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .foot-btn {
+            width: 34px; height: 34px;
+            border: none; background: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 17px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--muted);
+            transition: background .15s, color .15s;
+            text-decoration: none;
+            position: relative;
+        }
+        .foot-btn:hover { background: var(--bg); color: var(--text); }
+
+        /* ── Files popup ── */
+        .popup {
+            display: none;
+            position: absolute;
+            bottom: 42px; left: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: var(--shadow-hover);
+            min-width: 260px;
+            z-index: 100;
+            overflow: hidden;
+        }
+        .popup.open { display: block; }
+        .popup-head { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--subtle); border-bottom: 1px solid var(--border); }
+        .popup-item { padding: 10px 14px; border-bottom: 1px solid var(--bg); }
+        .popup-item:last-child { border-bottom: none; }
+        .popup-item-name { font-size: 13px; font-weight: 500; color: var(--text); }
+        .popup-item-meta { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+        .popup-item-links { display: flex; gap: 8px; margin-top: 5px; }
+        .popup-link { font-size: 12px; color: var(--accent); text-decoration: none; }
+        .popup-link:hover { text-decoration: underline; }
+        .popup-empty { padding: 16px 14px; font-size: 13px; color: var(--subtle); text-align: center; }
+
+        /* card colors */
+        .ch0 { background: linear-gradient(135deg, #1e3a8a, #1e40af); }
+        .ch1 { background: linear-gradient(135deg, #064e3b, #065f46); }
+        .ch2 { background: linear-gradient(135deg, #7f1d1d, #991b1b); }
+        .ch3 { background: linear-gradient(135deg, #78350f, #92400e); }
+        .ch4 { background: linear-gradient(135deg, #4c1d95, #5b21b6); }
+        .ch5 { background: linear-gradient(135deg, #0c4a6e, #0e7490); }
+        .ch6 { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
+        .ch7 { background: linear-gradient(135deg, #14532d, #166534); }
+
+        /* ── Empty state ── */
+        .empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 72px 24px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px dashed var(--border);
+        }
+        .empty-icon { font-size: 52px; opacity: .3; margin-bottom: 16px; }
+        .empty-title { font-family: 'Lora', serif; font-size: 20px; color: var(--text); margin-bottom: 8px; }
+        .empty-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+        .empty-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 22px;
+            background: var(--accent); color: white;
+            border-radius: 9px; font-size: 14px; font-weight: 500;
+            text-decoration: none; border: none; cursor: pointer;
+        }
+        .empty-btn:hover { background: #1d4ed8; }
+
+        /* ── FAB ── */
+        .fab {
+            position: fixed; bottom: 28px; right: 28px;
+            width: 52px; height: 52px;
+            border-radius: 16px;
+            background: var(--accent);
+            color: white;
+            font-size: 26px; font-weight: 300;
+            border: none; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(37,99,235,.4);
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(37,99,235,.5); }
+
+        @media (max-width: 700px) {
+            .sidebar { display: none; }
+            .main { padding: 16px; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/dashboard" class="topbar-brand">
+        <div class="brand-mark">V</div>
+        <span class="brand-name">VisualMath</span>
+    </a>
+    <span class="brand-sep">/</span>
+    <span class="brand-section">Classroom</span>
+    <div class="topbar-actions">
+        <a href="/dashboard" class="tb-btn tb-btn-ghost">← Дашборд</a>
+        {{if eq .UserType "teacher"}}
+        <a href="/classroom/subjects/create" class="tb-btn tb-btn-primary">+ Предмет</a>
+        {{end}}
+    </div>
+</header>
+
+<div class="layout">
+    <nav class="sidebar">
+        {{if eq .UserType "teacher"}}
+        <div class="sb-section">Общее</div>
+        <a href="/dashboard" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Дашборд
+        </a>
+        <div class="sb-divider"></div>
+        <div class="sb-section">Контент</div>
+        <a href="/modules" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+            Библиотека модулей
+        </a>
+        <a href="/lectures" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            Мои лекции
+        </a>
+        <a href="/lectures/launch" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Начать лекцию
+        </a>
+        <div class="sb-divider"></div>
+        <div class="sb-section">Classroom</div>
+        <a href="/classroom/subjects" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Мои предметы
+        </a>
+        <a href="/classroom/subjects/create" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Создать предмет
+        </a>
+        <div class="sb-divider"></div>
+        <div class="sb-section">Создание</div>
+        <a href="/modules/create" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            Создать модуль
+        </a>
+        <a href="/lectures/create" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Создать лекцию
+        </a>
+        {{else}}
+        <div class="sb-section">Общее</div>
+        <a href="/dashboard" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Дашборд
+        </a>
+        <div class="sb-divider"></div>
+        <div class="sb-section">Учёба</div>
+        <a href="/classroom/subjects" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Мои предметы
+        </a>
+        <a href="/classroom/join" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Присоединиться к предмету
+        </a>
+        <a href="/student/join" class="sb-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Присоединиться к лекции
+        </a>
+        {{end}}
+    </nav>
+
+    <main class="main">
+        <div class="page-header">
+            <h1 class="page-title">
+                {{if eq .UserType "teacher"}}Мои предметы{{else}}Предметы{{end}}
+            </h1>
+        </div>
+
+        <div class="grid">
+            {{if .Subjects}}
+            {{range $i, $s := .Subjects}}
+            <div class="card" onclick="location.href='/classroom/subjects/{{$s.ID}}'">
+                <div class="card-head ch{{mod $i 8}}">
+                    <div class="card-title">{{$s.Title}}</div>
+                    {{if $s.Description}}
+                    <div class="card-desc">{{$s.Description}}</div>
+                    {{end}}
+                    <div class="card-letter">{{firstChar $s.Title}}</div>
+                </div>
+                <div class="card-body">
+                    {{if $s.HasNearest}}
+                        {{if $s.HasDeadline}}
+                        <div class="dl-label">Срок сдачи — {{$s.NearestDay}}</div>
+                        <div class="dl-value">{{$s.NearestTime}} &mdash; {{$s.NearestTitle}}</div>
+                        {{else}}
+                        <div class="dl-label">Последнее задание</div>
+                        <div class="dl-value muted">{{$s.NearestTitle}}</div>
+                        {{end}}
+                    {{else}}
+                    <div class="dl-value muted">Нет заданий</div>
+                    {{end}}
+                </div>
+                <div class="card-foot">
+                    {{if eq $.UserType "student"}}
+                    <div class="foot-btn" id="fb-{{$s.ID}}" onclick="event.stopPropagation(); toggleFiles({{$s.ID}})" title="Мои работы">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                        <div class="popup" id="pop-{{$s.ID}}">
+                            <div class="popup-head">Мои работы</div>
+                            <div class="popup-empty">⏳ Загрузка...</div>
+                        </div>
+                    </div>
+                    {{end}}
+                    {{if and (eq $.UserType "teacher") $s.IsOwner}}
+                    <button class="foot-btn" onclick="event.stopPropagation(); copyCode('{{$s.InviteCode}}')" title="Скопировать код">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    </button>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+            {{else}}
+            <div class="empty">
+                <div class="empty-icon">🎓</div>
+                <div class="empty-title">{{if eq .UserType "teacher"}}Создайте первый предмет{{else}}Нет предметов{{end}}</div>
+                <div class="empty-sub">{{if eq .UserType "teacher"}}Студенты смогут присоединяться по коду{{else}}Введите инвайт-код от преподавателя{{end}}</div>
+                {{if eq .UserType "teacher"}}
+                <a href="/classroom/subjects/create" class="empty-btn">+ Создать предмет</a>
+                {{else}}
+                <a href="/classroom/join" class="empty-btn">⌘ Вступить по коду</a>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+    </main>
+</div>
+
+{{if eq .UserType "teacher"}}
+<a href="/classroom/subjects/create" class="fab" title="Создать предмет">+</a>
+{{end}}
+
+<script>
+document.addEventListener('click', function() {
+    document.querySelectorAll('.popup.open').forEach(function(p) { p.classList.remove('open'); });
+});
+
+var loaded = {};
+function toggleFiles(id) {
+    var pop = document.getElementById('pop-' + id);
+    var wasOpen = pop.classList.contains('open');
+    document.querySelectorAll('.popup.open').forEach(function(p) { p.classList.remove('open'); });
+    if (wasOpen) return;
+    pop.classList.add('open');
+    if (loaded[id]) return;
+    loaded[id] = true;
+    var _t = localStorage.getItem('token') || '';
+    fetch('/api/classroom/subjects/' + id + '/my-files', { headers: _t ? { 'Authorization': 'Bearer ' + _t } : {} })
+        .then(function(r) { return r.json(); })
+        .then(function(files) {
+            if (!files || !files.length) {
+                pop.innerHTML = '<div class="popup-head">Мои работы</div><div class="popup-empty">Ничего не сдано</div>';
+                return;
+            }
+            var h = '<div class="popup-head">Мои работы</div>';
+            files.forEach(function(f) {
+                var st = f.status === 'reviewed' ? '✅ Проверено' : '⏳ На проверке';
+                h += '<div class="popup-item">';
+                h += '<div class="popup-item-name">' + esc(f.assignment_title) + '</div>';
+                h += '<div class="popup-item-meta">' + f.submitted_at + ' · ' + st + '</div>';
+                h += '<div class="popup-item-links"><a href="' + f.download_url + '" class="popup-link">Скачать</a>';
+                if (f.annotated_url) h += '<a href="' + f.annotated_url + '" class="popup-link">С аннотациями</a>';
+                h += '</div></div>';
+            });
+            pop.innerHTML = h;
+        })
+        .catch(function() { pop.innerHTML = '<div class="popup-empty">Ошибка загрузки</div>'; });
+}
+function copyCode(code) {
+    copyToClipboard(code, 'Код');
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика — {{.Subject.Title}} — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --subtle: #9ca3af;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --green: #16a34a;
+            --green-light: #f0fdf4;
+            --amber: #d97706;
+            --amber-light: #fffbeb;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .topbar {
+            height: 56px; background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 20px; gap: 10px;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .back-link {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 13px; color: var(--muted); text-decoration: none;
+            padding: 6px 10px; border-radius: 8px; transition: background .15s, color .15s;
+        }
+        .back-link:hover { background: var(--bg); color: var(--text); }
+        .crumb-sep { color: var(--border); font-size: 18px; }
+        .crumb-current { font-size: 15px; font-weight: 500; }
+        .topbar-right { margin-left: auto; }
+        .tb-btn {
+            height: 33px; padding: 0 14px; border-radius: 8px; border: none;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; text-decoration: none;
+            background: var(--accent); color: #fff; transition: background .15s;
+        }
+        .tb-btn:hover { background: #1d4ed8; }
+
+        .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 48px; }
+        .page-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+        .page-sub { font-size: 13.5px; color: var(--muted); margin-bottom: 24px; }
+
+        /* ── Summary cards ── */
+        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+        .scard {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 18px 18px 16px; box-shadow: var(--shadow);
+        }
+        .scard-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--subtle); margin-bottom: 8px; }
+        .scard-value { font-size: 30px; font-weight: 700; font-family: 'Lora', serif; line-height: 1; }
+        .scard-value.accent { color: var(--accent); }
+        .scard-value.green { color: var(--green); }
+        .scard-value.amber { color: var(--amber); }
+        .scard-unit { font-size: 14px; font-weight: 500; color: var(--subtle); margin-left: 4px; }
+
+        /* ── Assignments table ── */
+        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+        .a-table {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+        }
+        .a-row {
+            display: grid; grid-template-columns: 1fr 130px 120px 90px;
+            align-items: center; gap: 12px;
+            padding: 14px 18px; border-bottom: 1px solid var(--bg);
+        }
+        .a-row:last-child { border-bottom: none; }
+        .a-row.head {
+            font-size: 11.5px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: .05em; color: var(--subtle); background: #fafbfc;
+        }
+        .a-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .a-name a { color: var(--text); text-decoration: none; }
+        .a-name a:hover { color: var(--accent); }
+        .a-submit { font-size: 13px; color: var(--muted); }
+        .a-bar-track { height: 6px; background: var(--bg); border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .a-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+        .a-reviewed { font-size: 13px; color: var(--muted); }
+        .a-avg { font-size: 15px; font-weight: 600; font-family: 'Lora', serif; }
+        .a-avg.dim { color: var(--subtle); font-weight: 400; }
+
+        .empty {
+            background: var(--surface); border: 1px dashed var(--border);
+            border-radius: var(--radius); padding: 48px 24px; text-align: center;
+        }
+        .empty-icon { font-size: 44px; opacity: .25; margin-bottom: 14px; }
+        .empty-text { font-size: 14px; color: var(--muted); }
+
+        @media (max-width: 700px) {
+            /* Страница без mobile-nav.js — собственные мобильные правила.
+               Корень «разъезжания»: топбар (back-link с полным названием +
+               кнопка «Скачать ведомость») переполнял строку и раздувал
+               scrollWidth → весь контент уезжал вправо. Схлопываем топбар
+               в иконки и страхуемся overflow-x:hidden. */
+            html, body { overflow-x: hidden; }
+            .topbar { padding: 0 12px; gap: 8px; }
+            .back-link { font-size: 0; flex-shrink: 0; padding: 6px 8px; }
+            .back-link::before { content: "←"; font-size: 18px; }
+            .crumb-sep { display: none; }
+            .crumb-current {
+                font-size: 14px; min-width: 0;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .topbar-right { margin-left: auto; }
+            .tb-btn { font-size: 0; gap: 0; padding: 0 12px; flex-shrink: 0; }
+            .tb-btn svg { width: 16px; height: 16px; }
+            .wrap { padding: 22px 16px 40px; }
+
+            .summary { grid-template-columns: repeat(2, 1fr); }
+            .a-row { grid-template-columns: 1fr 90px 70px; }
+            .a-reviewed { display: none; }
+            .a-row.head .col-reviewed { display: none; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/classroom/subjects/{{.Subject.ID}}" class="back-link">← {{.Subject.Title}}</a>
+    <span class="crumb-sep">/</span>
+    <span class="crumb-current">Аналитика</span>
+    <div class="topbar-right">
+        <a href="/classroom/subjects/{{.Subject.ID}}/gradebook.xlsx" class="tb-btn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Скачать ведомость
+        </a>
+    </div>
+</header>
+
+<div class="wrap">
+    <div class="page-title">Аналитика предмета</div>
+    <div class="page-sub">{{.Subject.Title}}</div>
+
+    <div class="summary">
+        <div class="scard">
+            <div class="scard-label">Студентов</div>
+            <div class="scard-value">{{.Analytics.StudentsTotal}}</div>
+        </div>
+        <div class="scard">
+            <div class="scard-label">Заданий</div>
+            <div class="scard-value">{{.Analytics.AssignmentsTotal}}</div>
+        </div>
+        <div class="scard">
+            <div class="scard-label">Средний балл</div>
+            <div class="scard-value accent">{{if gt .Analytics.OverallAvg 0.0}}{{printf "%.1f" .Analytics.OverallAvg}}{{else}}—{{end}}</div>
+        </div>
+        <div class="scard">
+            <div class="scard-label">На проверке</div>
+            <div class="scard-value {{if gt .Analytics.TotalPending 0}}amber{{end}}">{{.Analytics.TotalPending}}</div>
+        </div>
+    </div>
+
+    <div class="section-title">По заданиям</div>
+    {{if .Analytics.Assignments}}
+    <div class="a-table">
+        <div class="a-row head">
+            <div>Задание</div>
+            <div>Сдали</div>
+            <div class="col-reviewed">Проверено</div>
+            <div>Ср. балл</div>
+        </div>
+        {{range .Analytics.Assignments}}
+        <div class="a-row">
+            <div class="a-name"><a href="/classroom/assignments/{{.AssignmentID}}">{{.Title}}</a></div>
+            <div>
+                <div class="a-submit">{{.Submitted}} / {{.StudentsTotal}} ({{.SubmitRate}}%)</div>
+                <div class="a-bar-track"><div class="a-bar-fill" style="width:{{.SubmitRate}}%"></div></div>
+            </div>
+            <div class="a-reviewed">{{.Reviewed}} / {{.Submitted}}</div>
+            <div>
+                {{if gt .GradedCount 0}}
+                <span class="a-avg">{{printf "%.1f" .AvgGrade}}</span>{{if gt .MaxScore 0}}<span style="font-size:12px;color:var(--subtle)"> / {{.MaxScore}}</span>{{end}}
+                {{else}}
+                <span class="a-avg dim">—</span>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty">
+        <div class="empty-icon">📊</div>
+        <div class="empty-text">Пока нет заданий — статистика появится, когда студенты начнут сдавать работы.</div>
+    </div>
+    {{end}}
+</div>
+
+</body>
+</html>

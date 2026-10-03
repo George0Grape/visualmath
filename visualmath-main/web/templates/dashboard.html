@@ -1,0 +1,501 @@
+// cmd/server/main.go - Главный файл сервера VisualMath с OAuth
+package main
+
+import (
+    "database/sql"
+    "fmt"
+    "log"
+    "net/http"
+    "os"
+    
+    "github.com/go-chi/chi/v5"
+    "github.com/go-chi/chi/v5/middleware"
+    "github.com/joho/godotenv"
+    _ "github.com/lib/pq" // Драйвер PostgreSQL
+    // _ "github.com/mattn/go-sqlite3" // Раскомментируйте если используете SQLite
+    
+    "visualmath-platform/internal/handlers"
+)
+
+func main() {
+    // 1. Загружаем переменные окружения из .env файла
+    fmt.Println("🚀 Запускаем VisualMath сервер...")
+    
+    err := godotenv.Load()
+    if err != nil {
+        log.Println("⚠️  .env file not found, using default values")
+    }
+    
+    // 2. Подключаемся к базе данных
+    db, err := initDatabase()
+    if err != nil {
+        log.Fatal("❌ Database error:", err)
+    }
+    defer db.Close()
+    
+    fmt.Println("✅ Подключено к базе данных!")
+    
+    // 3. Инициализируем обработчики
+    authHandler := &handlers.AuthHandler{DB: db}
+    oauthHandler := handlers.NewOAuthHandler(db)
+    
+    // 4. Создаем роутер chi (вместо стандартного http.HandleFunc)
+    r := chi.NewRouter()
+    
+    // 5. Добавляем middleware (промежуточное ПО)
+    r.Use(middleware.Logger)      // Логирование запросов
+    r.Use(middleware.Recoverer)   // Восстановление после паники
+    r.Use(middleware.RequestID)   // ID для каждого запроса
+    
+    // 6. Настраиваем статические файлы
+    // Убедитесь что структура папок: web/static/css/, web/static/js/
+    r.Handle("/static/*", http.StripPrefix("/static/", 
+        http.FileServer(http.Dir("web/static"))))
+    
+    // 7. Определяем маршруты
+    
+    // 7.1 Публичные маршруты (доступны без авторизации)
+    r.Get("/", homeHandler)
+    r.Get("/login", loginPageHandler)
+    r.Get("/register", registerPageHandler)
+    r.Get("/dashboard", dashboardPageHandler)
+    r.Get("/test", testHandler)
+    
+    // 7.2 API маршруты (регистрация/вход)
+    r.Post("/api/register", authHandler.Register)
+    r.Post("/api/login", authHandler.Login)
+    
+    // 7.3 OAuth маршруты (VK и Google)
+    r.Get("/auth/vk", oauthHandler.VKAuthHandler)
+    r.Get("/auth/vk/callback", oauthHandler.VKCallbackHandler)
+    r.Get("/auth/google", oauthHandler.GoogleAuthHandler)
+    r.Get("/auth/google/callback", oauthHandler.GoogleCallbackHandler)
+    r.Get("/oauth/success", oauthHandler.OAuthSuccessHandler)
+    
+    // 7.4 Защищенные маршруты (пока заглушки)
+    r.Route("/api", func(r chi.Router) {
+        // Здесь позже добавим middleware для проверки JWT
+        r.Get("/user/profile", func(w http.ResponseWriter, r *http.Request) {
+            w.Header().Set("Content-Type", "application/json")
+            fmt.Fprintf(w, `{"message": "Profile endpoint - to be implemented"}`)
+        })
+    })
+    
+    // 8. Запускаем сервер
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8080"
+    }
+    
+    fmt.Printf("✅ Сервер запущен!\n")
+    fmt.Printf("🌐 Главная страница: http://localhost:%s\n", port)
+    fmt.Printf("🔗 Вход через VK: http://localhost:%s/auth/vk\n", port)
+    fmt.Printf("🔗 Вход через Google: http://localhost:%s/auth/google\n", port)
+    fmt.Printf("📂 Статические файлы: http://localhost:%s/static/css/style.css\n", port)
+    fmt.Println("🛑 Для остановки нажмите Ctrl+C")
+    
+    log.Fatal(http.ListenAndServe(":"+port, r))
+}
+
+// initDatabase инициализирует подключение к базе данных
+func initDatabase() (*sql.DB, error) {
+    // Вариант 1: PostgreSQL (рекомендуется)
+    connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
+        os.Getenv("DB_USER"),
+        os.Getenv("DB_PASSWORD"),
+        os.Getenv("DB_HOST"),
+        os.Getenv("DB_NAME"))
+    
+    // Вариант 2: SQLite (проще для начала)
+    // connStr := "visualmath.db"
+    // return sql.Open("sqlite3", connStr)
+    
+    db, err := sql.Open("postgres", connStr)
+    if err != nil {
+        return nil, fmt.Errorf("database connection error: %v", err)
+    }
+    
+    // Проверяем подключение
+    err = db.Ping()
+    if err != nil {
+        return nil, fmt.Errorf("cannot connect to database: %v", err)
+    }
+    
+    // Создаем таблицы если их нет
+    err = createTables(db)
+    if err != nil {
+        log.Printf("⚠️  Warning creating tables: %v", err)
+    }
+    
+    return db, nil
+}
+
+// createTables создает необходимые таблицы в базе данных
+func createTables(db *sql.DB) error {
+    queries := []string{
+        // Таблица пользователей
+        `CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            login VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            user_type VARCHAR(50) NOT NULL CHECK (user_type IN ('student', 'teacher', 'admin')),
+            group_number VARCHAR(100),
+            email VARCHAR(255) UNIQUE NOT NULL,
+            email_verified BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        
+        // Таблица курсов
+        `CREATE TABLE IF NOT EXISTS courses (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) UNIQUE NOT NULL
+        )`,
+        
+        // Таблица OAuth связей
+        `CREATE TABLE IF NOT EXISTS oauth_connections (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            provider VARCHAR(20) NOT NULL,
+            provider_user_id VARCHAR(100) NOT NULL,
+            email VARCHAR(255),
+            full_name VARCHAR(255),
+            avatar_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(provider, provider_user_id)
+        )`,
+        
+        // Добавляем основные курсы
+        `INSERT INTO courses (name) VALUES 
+            ('Математический анализ'),
+            ('Линейная алгебра и аналитическая геометрия'),
+            ('Дискретная математика'),
+            ('Экономика')
+        ON CONFLICT (name) DO NOTHING`,
+    }
+    
+    for _, query := range queries {
+        _, err := db.Exec(query)
+        if err != nil {
+            return fmt.Errorf("error executing query %s: %v", query[:50], err)
+        }
+    }
+    
+    fmt.Println("✅ Таблицы базы данных созданы/проверены")
+    return nil
+}
+
+// Обработчики страниц (оставляем ваши существующие)
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    
+    html := `
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VisualMath - Главная</title>
+        <link rel="stylesheet" href="/static/css/style.css">
+    </head>
+    <body>
+        <div style="text-align: center; padding: 50px;">
+            <h1>🎓 VisualMath Platform</h1>
+            <p>Платформа для интерактивного изучения математики</p>
+            
+            <div style="margin: 30px 0;">
+                <a href="/login" style="padding: 12px 30px; background: #3498db; 
+                   color: white; text-decoration: none; border-radius: 5px; margin: 10px;">
+                   🔑 Войти
+                </a>
+                <a href="/register" style="padding: 12px 30px; background: #2ecc71; 
+                   color: white; text-decoration: none; border-radius: 5px; margin: 10px;">
+                   📝 Регистрация
+                </a>
+            </div>
+            
+            <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                <h3>Быстрый вход через:</h3>
+                <div style="margin: 15px;">
+                    <a href="/auth/vk" style="margin: 0 10px; color: #4a76a8;">VK</a>
+                    <a href="/auth/google" style="margin: 0 10px; color: #db4437;">Google</a>
+                </div>
+                <p><a href="/test">Тестовая страница</a></p>
+                <p><a href="/static/css/style.css">CSS файл</a></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `
+    
+    fmt.Fprintf(w, html)
+}
+
+func loginPageHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    
+    html := `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Вход - VisualMath</title>
+        <link rel="stylesheet" href="/static/css/style.css">
+    </head>
+    <body>
+        <div style="max-width: 400px; margin: 100px auto; padding: 30px; 
+             background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+            <h1 style="text-align: center; color: #2c3e50;">🔐 Вход</h1>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="/auth/vk" style="display: inline-block; padding: 10px 20px; margin: 5px; 
+                   background: #4a76a8; color: white; text-decoration: none; border-radius: 5px;">
+                   VK
+                </a>
+                <a href="/auth/google" style="display: inline-block; padding: 10px 20px; margin: 5px; 
+                   background: #db4437; color: white; text-decoration: none; border-radius: 5px;">
+                   Google
+                </a>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <hr style="border: none; border-top: 1px solid #eee;">
+                <span style="background: white; padding: 0 10px;">или</span>
+            </div>
+            
+            <form id="loginForm" style="margin-top: 20px;">
+                <input type="text" id="login" name="login" placeholder="Логин" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="password" id="password" name="password" placeholder="Пароль" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                
+                <button type="submit" 
+                        style="width: 100%; padding: 12px; background: #3498db; color: white; 
+                               border: none; border-radius: 5px; margin-top: 20px; cursor: pointer;">
+                    Войти
+                </button>
+            </form>
+            
+            <div id="message" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;"></div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <p><a href="/register">Нет аккаунта? Зарегистрироваться</a></p>
+                <p><a href="/">На главную</a></p>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    login: document.getElementById('login').value,
+                    password: document.getElementById('password').value
+                };
+                
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    const messageDiv = document.getElementById('message');
+                    
+                    if (response.ok) {
+                        messageDiv.style.background = '#d4edda';
+                        messageDiv.style.color = '#155724';
+                        messageDiv.textContent = '✅ Вход выполнен! Перенаправление...';
+                        messageDiv.style.display = 'block';
+                        
+                        // Сохраняем токен
+                        localStorage.setItem('token', result.token);
+                        localStorage.setItem('user', JSON.stringify(result.user));
+                        
+                        setTimeout(() => {
+                            window.location.href = '/dashboard';
+                        }, 1000);
+                    } else {
+                        messageDiv.style.background = '#f8d7da';
+                        messageDiv.style.color = '#721c24';
+                        messageDiv.textContent = '❌ ' + (result.message || 'Ошибка входа');
+                        messageDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    const messageDiv = document.getElementById('message');
+                    messageDiv.style.background = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.textContent = '❌ Ошибка сети: ' + error.message;
+                    messageDiv.style.display = 'block';
+                }
+            });
+        </script>
+    </body>
+    </html>
+    `
+    
+    fmt.Fprintf(w, html)
+}
+
+func registerPageHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    
+    html := `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Регистрация - VisualMath</title>
+        <link rel="stylesheet" href="/static/css/style.css">
+    </head>
+    <body>
+        <div style="max-width: 400px; margin: 50px auto; padding: 30px; 
+             background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+            <h1 style="text-align: center; color: #2c3e50;">📝 Регистрация</h1>
+            
+            <form id="registerForm" style="margin-top: 20px;">
+                <input type="text" id="login" name="login" placeholder="Логин" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="password" id="password" name="password" placeholder="Пароль" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="text" id="full_name" name="full_name" placeholder="ФИО" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="email" id="email" name="email" placeholder="Email" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                
+                <select id="user_type" name="user_type" style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">Выберите тип пользователя</option>
+                    <option value="student">Студент</option>
+                    <option value="teacher">Преподаватель</option>
+                </select>
+                
+                <input type="text" id="group_number" name="group_number" placeholder="Номер группы (для студентов)" 
+                       style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; display: none;">
+                
+                <button type="submit" 
+                        style="width: 100%; padding: 12px; background: #2ecc71; color: white; 
+                               border: none; border-radius: 5px; margin-top: 20px; cursor: pointer;">
+                    Зарегистрироваться
+                </button>
+            </form>
+            
+            <div id="message" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;"></div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <p><a href="/login">Уже есть аккаунт? Войти</a></p>
+                <p><a href="/">На главную</a></p>
+            </div>
+        </div>
+
+        <script>
+            // Показываем поле группы только для студентов
+            document.getElementById('user_type').addEventListener('change', function() {
+                const groupField = document.getElementById('group_number');
+                if (this.value === 'student') {
+                    groupField.style.display = 'block';
+                    groupField.required = true;
+                } else {
+                    groupField.style.display = 'none';
+                    groupField.required = false;
+                }
+            });
+            
+            // Обработка формы регистрации
+            document.getElementById('registerForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    login: document.getElementById('login').value,
+                    password: document.getElementById('password').value,
+                    full_name: document.getElementById('full_name').value,
+                    email: document.getElementById('email').value,
+                    user_type: document.getElementById('user_type').value,
+                    group_number: document.getElementById('group_number').value
+                };
+                
+                try {
+                    const response = await fetch('/api/register', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    const messageDiv = document.getElementById('message');
+                    
+                    if (response.ok) {
+                        messageDiv.style.background = '#d4edda';
+                        messageDiv.style.color = '#155724';
+                        messageDiv.textContent = '✅ Регистрация успешна!';
+                        messageDiv.style.display = 'block';
+                        
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    } else {
+                        messageDiv.style.background = '#f8d7da';
+                        messageDiv.style.color = '#721c24';
+                        messageDiv.textContent = '❌ ' + (result.message || 'Ошибка регистрации');
+                        messageDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    const messageDiv = document.getElementById('message');
+                    messageDiv.style.background = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.textContent = '❌ Ошибка сети: ' + error.message;
+                    messageDiv.style.display = 'block';
+                }
+            });
+        </script>
+    </body>
+    </html>
+    `
+    
+    fmt.Fprintf(w, html)
+}
+
+func dashboardPageHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    
+    html := `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Личный кабинет - VisualMath</title>
+        <link rel="stylesheet" href="/static/css/style.css">
+    </head>
+    <body>
+        <div style="text-align: center; padding: 50px;">
+            <h1>📊 Личный кабинет</h1>
+            <p>Эта страница требует авторизации</p>
+            <p><a href="/login">Войти в систему</a></p>
+            <p><a href="/">На главную</a></p>
+        </div>
+    </body>
+    </html>
+    `
+    
+    fmt.Fprintf(w, html)
+}
+
+func testHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    
+    html := `
+    <!DOCTYPE html>
+    <html>
+    <head><title>Тест</title></head>
+    <body style="padding: 50px; text-align: center;">
+        <h1 style="color: green;">✅ Тест пройден!</h1>
+        <p>Сервер работает правильно</p>
+        <p>OAuth маршруты:</p>
+        <ul style="list-style: none; padding: 0;">
+            <li><a href="/auth/vk">/auth/vk</a> - Вход через VK</li>
+            <li><a href="/auth/google">/auth/google</a> - Вход через Google</li>
+        </ul>
+        <p><a href="/">Вернуться на главную</a></p>
+    </body>
+    </html>
+    `
+    
+    fmt.Fprintf(w, html)
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать предмет — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root { --bg: #f4f5f7; --surface: #fff; --border: #e4e7ec; --text: #1a1d23; --muted: #6b7280; --subtle: #9ca3af; --accent: #2563eb; --accent-light: #eff6ff; --sidebar-w: 260px; --topbar-h: 58px; --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; }
+        .topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+        .topbar-crumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+        .topbar-crumb a { color: var(--muted); text-decoration: none; transition: color .15s; }
+        .topbar-crumb a:hover { color: var(--accent); }
+        .topbar-crumb .sep { color: var(--subtle); }
+        .sidebar { position: fixed; top: var(--topbar-h); left: 0; bottom: 0; width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; }
+        .sb-section { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--subtle); padding: 14px 10px 5px; }
+        .sb-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 400; color: var(--muted); text-decoration: none; transition: all .15s; }
+        .sb-link:hover { background: var(--bg); color: var(--text); }
+        .sb-link.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+        .sb-link svg { flex-shrink: 0; opacity: .75; }
+        .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+        .main { margin-left: var(--sidebar-w); padding-top: calc(var(--topbar-h) + 40px); padding-bottom: 60px; padding-left: 40px; padding-right: 40px; }
+        .content { max-width: 560px; }
+        .page-title { font-family: 'Lora', serif; font-size: 24px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .page-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+        .form-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 28px; }
+        .field { margin-bottom: 18px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .field input, .field textarea { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; font-family: 'DM Sans', sans-serif; outline: none; transition: border .2s, box-shadow .2s; background: #fff; color: var(--text); }
+        .field input:focus, .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+        .field textarea { resize: vertical; min-height: 90px; }
+        .actions { display: flex; gap: 10px; margin-top: 6px; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 22px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; text-decoration: none; transition: all .15s; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate { animation: fadeUp .3s ease both; }
+        @media (max-width: 700px) { .sidebar { display: none; } .main { margin-left: 0; padding-left: 20px; padding-right: 20px; } }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-sep"></div>
+    <nav class="topbar-crumb">
+        <a href="/classroom/subjects">Classroom</a>
+        <span class="sep">›</span>
+        <span>Создать предмет</span>
+    </nav>
+</header>
+<aside class="sidebar">
+    <div class="sb-section">Общее</div>
+    <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Контент</div>
+    <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Библиотека модулей
+    </a>
+    <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Мои лекции
+    </a>
+    <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Начать лекцию
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Classroom</div>
+    <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Мои предметы
+    </a>
+    <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать предмет
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Создание</div>
+    <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+    </a>
+    <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Создать лекцию
+    </a>
+</aside>
+<main class="main">
+    <div class="content animate">
+        <h1 class="page-title">Новый предмет</h1>
+        <p class="page-sub">Студенты смогут присоединиться по инвайт-коду</p>
+        <div class="form-card">
+            <form method="POST" action="/classroom/subjects/create">
+                <div class="field">
+                    <label for="title">Название *</label>
+                    <input type="text" id="title" name="title" placeholder="Например: Математический анализ" required>
+                </div>
+                <div class="field">
+                    <label for="description">Описание</label>
+                    <textarea id="description" name="description" placeholder="Краткое описание предмета..."></textarea>
+                </div>
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Создать предмет
+                    </button>
+                    <a href="/classroom/subjects" class="btn btn-ghost">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+</body>
+</html>

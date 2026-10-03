@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Assignment.Title}} — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --subtle: #9ca3af;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --green: #16a34a;
+            --green-light: #dcfce7;
+            --amber: #d97706;
+            --amber-light: #fef3c7;
+            --red: #dc2626;
+            --red-light: #fee2e2;
+            --sidebar-w: 260px;
+            --topbar-h: 58px;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,.10), 0 16px 40px rgba(0,0,0,.06);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            height: var(--topbar-h);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 20px;
+        }
+        .topbar-logo {
+            font-family: 'Lora', serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text);
+            text-decoration: none;
+            letter-spacing: -.3px;
+        }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+        .topbar-crumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        .topbar-crumb a {
+            color: var(--muted);
+            text-decoration: none;
+            transition: color .15s;
+        }
+        .topbar-crumb a:hover { color: var(--accent); }
+        .topbar-crumb .sep { color: var(--subtle); }
+        .topbar-crumb .current { color: var(--text); font-weight: 500; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            position: fixed;
+            top: var(--topbar-h);
+            left: 0;
+            bottom: 0;
+            width: var(--sidebar-w);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .sb-section { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--subtle); padding: 14px 10px 5px; }
+        .sb-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--muted); text-decoration: none; transition: all .15s; }
+        .sb-link:hover { background: var(--bg); color: var(--text); }
+        .sb-link svg { flex-shrink: 0; opacity: .75; }
+        .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+        /* ── Main ── */
+        .main {
+            margin-left: var(--sidebar-w);
+            padding-top: calc(var(--topbar-h) + 32px);
+            padding-bottom: 60px;
+            padding-left: 32px;
+            padding-right: 32px;
+            max-width: calc(var(--sidebar-w) + 1100px);
+        }
+
+        .page-title {
+            font-family: 'Lora', serif;
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 28px;
+        }
+
+        /* ── Grid layout ── */
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: box-shadow .2s;
+        }
+        .card:hover { box-shadow: var(--shadow-hover); }
+
+        .card-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .card-body { padding: 20px 24px; }
+        .card-footer {
+            padding: 14px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* ── Assignment info card ── */
+        .assignment-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .assignment-header {
+            padding: 28px 28px 20px;
+        }
+        .assignment-title {
+            font-family: 'Lora', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 10px;
+            line-height: 1.35;
+        }
+        .assignment-desc {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.65;
+            margin-bottom: 16px;
+        }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .01em;
+        }
+        .chip-blue { background: var(--accent-light); color: var(--accent); }
+        .chip-amber { background: var(--amber-light); color: var(--amber); }
+        .chip-green { background: var(--green-light); color: var(--green); }
+        .assignment-footer {
+            padding: 16px 28px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all .15s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-ghost {
+            background: transparent;
+            border: 1.5px solid var(--border);
+            color: var(--muted);
+        }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+        .btn-danger { background: var(--red-light); color: var(--red); border: 1.5px solid transparent; }
+        .btn-danger:hover { background: var(--red); color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-green { background: var(--green-light); color: var(--green); border: 1.5px solid transparent; }
+        .btn-green:hover { background: var(--green); color: #fff; }
+
+        /* ── Stats card ── */
+        .stat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .stat-label { font-size: 13px; color: var(--muted); }
+        .stat-value { font-size: 22px; font-family: 'Lora', serif; font-weight: 600; color: var(--text); }
+        .progress-bar {
+            height: 6px;
+            background: var(--bg);
+            border-radius: 99px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--green);
+            border-radius: 99px;
+            transition: width .6s ease;
+        }
+        .stat-divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+        /* ── Submissions list ── */
+        .submissions-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .section-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .count-badge {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 99px;
+        }
+
+        .submission-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            transition: box-shadow .2s, transform .15s;
+        }
+        .submission-row:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-1px);
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .avatar.reviewed { background: var(--green-light); color: var(--green); }
+
+        .sub-info { flex: 1; min-width: 0; }
+        .sub-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sub-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            white-space: nowrap;
+        }
+        .status-reviewed { background: var(--green-light); color: var(--green); }
+        .status-submitted { background: var(--amber-light); color: var(--amber); }
+
+        .sub-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .grade-box { display: flex; align-items: center; gap: 5px; }
+        .grade-input {
+            width: 60px; padding: 5px 8px;
+            border: 1.5px solid var(--border); border-radius: 7px;
+            font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 600;
+            text-align: center; outline: none; color: var(--text); transition: border .15s;
+        }
+        .grade-input:focus { border-color: var(--accent); }
+        .grade-sep { font-size: 12px; color: var(--subtle); }
+        .grade-badge {
+            display: inline-flex; align-items: center;
+            padding: 4px 10px; border-radius: 99px;
+            font-size: 12px; font-weight: 700;
+            background: #dbeafe; color: #1d4ed8; white-space: nowrap;
+        }
+
+        /* ── Grades table ── */
+        .grades-section { margin-top: 28px; }
+        .grades-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .grades-table th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 2px solid var(--border); }
+        .grades-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+        .grades-table tr:last-child td { border-bottom: none; }
+        .grades-table tr:hover td { background: var(--bg); }
+        .grade-cell { font-weight: 700; font-size: 14px; }
+        .grade-cell.graded { color: var(--green); }
+        .grade-cell.ungraded { color: var(--subtle); }
+
+        /* ── Empty state ── */
+        .empty-state {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 56px 32px;
+            text-align: center;
+        }
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .empty-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .empty-sub { font-size: 13px; color: var(--muted); }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate { animation: fadeUp .35s ease both; }
+        .delay-1 { animation-delay: .06s; }
+        .delay-2 { animation-delay: .12s; }
+        .delay-3 { animation-delay: .18s; }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            .main { padding-left: 20px; padding-right: 20px; }
+        }
+        @media (max-width: 700px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            /* Кнопки задания — в столбик на всю ширину: длинные подписи
+               («Скачать баллы (Excel)») в ряд по две вылезали за экран.
+               margin-left:auto у «Удалить» сбрасываем, иначе кнопка уезжает. */
+            .assignment-footer { padding: 14px 16px; gap: 8px; }
+            .assignment-footer .btn { flex: 1 1 100%; justify-content: center; }
+            .assignment-footer .btn[style*="margin-left"] { margin-left: 0 !important; }
+
+            /* Строка работы студента — flex-ряд (аватар+инфо+пилюли+5 кнопок)
+               сильно вылезал за экран. Разрешаем перенос: аватар+инфо+статус
+               в первой строке, блок действий — на всю ширину ниже. */
+            .submission-row { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+            .sub-info { flex: 1 1 auto; }
+            .sub-actions { flex: 1 1 100%; justify-content: flex-start; }
+            .sub-actions .btn, .sub-actions .chat-btn { flex: 1 1 auto; justify-content: center; }
+            .grade-box { flex: 1 1 100%; }
+            .grade-input { flex: 1 1 auto; min-width: 0; }
+            /* >=16px чтобы iOS не зумил при тапе по полю чата */
+            .tc-textarea { font-size: 16px; }
+        }
+
+        /* ── Teacher chat panel ── */
+        .tc-overlay {
+            display: none; position: fixed; inset: 0; z-index: 400;
+            background: rgba(0,0,0,.25); backdrop-filter: blur(2px);
+        }
+        .tc-overlay.open { display: block; }
+        .tc-panel {
+            position: fixed; top: 0; right: 0; bottom: 0; z-index: 401;
+            width: 360px; max-width: 100vw;
+            background: var(--surface); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            transform: translateX(100%); transition: transform .25s ease;
+            box-shadow: -4px 0 24px rgba(0,0,0,.1);
+        }
+        .tc-panel.open { transform: translateX(0); }
+        .tc-header {
+            padding: 16px 18px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .tc-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: var(--accent); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; flex-shrink: 0;
+        }
+        .tc-title { flex: 1; }
+        .tc-name { font-size: 14px; font-weight: 600; color: var(--text); }
+        .tc-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+        .tc-close {
+            width: 30px; height: 30px; border-radius: 7px; border: 1.5px solid var(--border);
+            background: var(--surface); color: var(--muted); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; line-height: 1; transition: all .15s;
+        }
+        .tc-close:hover { border-color: var(--red); color: var(--red); }
+        .tc-messages {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .tc-empty {
+            text-align: center; color: var(--subtle); font-size: 13px;
+            padding: 32px 0;
+        }
+        .tc-msg { display: flex; flex-direction: column; gap: 3px; }
+        .tc-msg-meta {
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--subtle);
+        }
+        .tc-msg-meta .name { font-weight: 600; color: var(--muted); }
+        .tc-msg-text {
+            font-size: 13px; line-height: 1.55; padding: 8px 11px;
+            border-radius: 8px; background: var(--bg); color: var(--text);
+            border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word;
+        }
+        .tc-msg.teacher .tc-msg-text { background: var(--accent-light); color: #1e40af; border-color: #bfdbfe; }
+        .tc-input-area {
+            padding: 12px 14px; border-top: 1px solid var(--border);
+            display: flex; gap: 8px; align-items: flex-end;
+        }
+        .tc-textarea {
+            flex: 1; padding: 9px 12px; border: 1.5px solid var(--border);
+            border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+            resize: none; outline: none; min-height: 38px; max-height: 120px;
+            line-height: 1.5; color: var(--text); background: var(--surface);
+            transition: border-color .15s;
+        }
+        .tc-textarea:focus { border-color: var(--accent); }
+        .tc-send {
+            width: 36px; height: 36px; flex-shrink: 0; border: none;
+            background: var(--accent); color: #fff; border-radius: 8px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background .15s;
+        }
+        .tc-send:hover { background: #1d4ed8; }
+        .tc-send:disabled { opacity: .4; cursor: default; }
+        .tc-loading { text-align: center; font-size: 12px; color: var(--subtle); padding: 20px; }
+        .chat-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 600;
+            border: 1.5px solid var(--border); background: var(--surface);
+            color: var(--muted); cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: all .15s; text-decoration: none; position: relative;
+        }
+        .chat-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .chat-btn-badge {
+            position: absolute; top: -5px; right: -5px;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: var(--accent); color: #fff; font-size: 9px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; border: 2px solid var(--surface);
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-sep"></div>
+    <nav class="topbar-crumb">
+        <a href="/classroom/subjects">Classroom</a>
+        <span class="sep">›</span>
+        <a href="/classroom/subjects/{{.Assignment.SubjectID}}">Предмет</a>
+        <span class="sep">›</span>
+        <span class="current">{{.Assignment.Title}}</span>
+    </nav>
+</header>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="sb-section">Общее</div>
+    <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Контент</div>
+    <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Библиотека модулей
+    </a>
+    <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Мои лекции
+    </a>
+    <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Начать лекцию
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Classroom</div>
+    <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Мои предметы
+    </a>
+    <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать предмет
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Создание</div>
+    <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+    </a>
+    <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Создать лекцию
+    </a>
+</aside>
+
+<!-- Main -->
+<main class="main">
+    <h1 class="page-title animate">{{.Assignment.Title}}</h1>
+    <p class="page-subtitle animate delay-1">Просмотр задания и работ студентов</p>
+
+    <div class="layout">
+        <!-- Left column -->
+        <div>
+            <!-- Assignment info -->
+            <div class="assignment-card animate delay-1">
+                <div class="assignment-header">
+                    <div class="assignment-title">{{.Assignment.Title}}</div>
+                    {{if .Assignment.Description}}
+                    <p class="assignment-desc">{{.Assignment.Description}}</p>
+                    {{end}}
+                    <div class="chips">
+                        {{if .Assignment.Deadline}}
+                        <span class="chip chip-amber">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Дедлайн: {{.Assignment.Deadline.Format "02.01.2006 в 15:04"}}
+                        </span>
+                        {{end}}
+                        <span class="chip chip-blue">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            Сдано: {{.Assignment.SubmitCount}}
+                        </span>
+                        <span class="chip chip-green">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            Проверено: {{.Assignment.ReviewedCount}}
+                        </span>
+                    </div>
+                </div>
+                <div class="assignment-footer">
+                    {{if .Assignment.ConditionFile}}
+                    <a href="/classroom/assignments/{{.Assignment.ID}}/condition" class="btn btn-ghost">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        Скачать условие
+                    </a>
+                    {{end}}
+                    <a href="/classroom/assignments/{{.Assignment.ID}}/grades.xlsx" class="btn btn-ghost">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Скачать баллы (Excel)
+                    </a>
+                    <a href="/classroom/assignments/{{.Assignment.ID}}/edit" class="btn btn-ghost">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Редактировать
+                    </a>
+                    <button onclick="deleteAssignment()" class="btn btn-danger" style="margin-left:auto;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        Удалить задание
+                    </button>
+                </div>
+            </div>
+
+            <!-- Submissions -->
+            <div class="animate delay-2">
+                <div class="submissions-header">
+                    <span class="section-label">Работы студентов</span>
+                    <span class="count-badge">{{len .Submissions}}</span>
+                </div>
+
+                {{if .Submissions}}
+                {{range .Submissions}}
+                <div class="submission-row">
+                    <div class="avatar {{if eq .Status "reviewed"}}reviewed{{end}}">
+                        {{firstChar .StudentName}}
+                    </div>
+                    <div class="sub-info">
+                        <div class="sub-name">{{.StudentName}}</div>
+                        <div class="sub-meta">
+                            {{if .StudentGroup}}{{.StudentGroup}} · {{end}}
+                            {{.SubmittedAt.Format "02.01.2006 в 15:04"}}
+                        </div>
+                    </div>
+                    {{if eq .Status "reviewed"}}
+                    <span class="status-pill status-reviewed">
+                        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Проверено
+                    </span>
+                    {{else}}
+                    <span class="status-pill status-submitted">
+                        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        На проверке
+                    </span>
+                    {{end}}
+                    {{if .IsLate}}<span class="status-pill" style="background:#fee2e2;color:#dc2626;">Опоздание</span>{{end}}
+                    <div class="sub-actions">
+                        <div class="grade-box">
+                            <input type="number" class="grade-input" min="0" max="{{$.Assignment.MaxScore}}"
+                                id="grade-{{.ID}}"
+                                value="{{if .Grade}}{{.Grade}}{{end}}"
+                                placeholder="—">
+                            <span class="grade-sep">/{{$.Assignment.MaxScore}}</span>
+                            <button class="btn btn-ghost btn-sm" onclick="saveGrade({{.ID}})">Сохранить</button>
+                        </div>
+                        <a href="/classroom/submissions/{{.ID}}/download" class="btn btn-ghost btn-sm">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Скачать
+                        </a>
+                        {{if $.Assignment.AllowComments}}
+                        <button class="chat-btn" id="chatBtn{{.ID}}" onclick="openTeacherChat({{.ID}}, '{{.StudentName}}')">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                            Чат
+                        </button>
+                        {{end}}
+                        <a href="/classroom/submissions/{{.ID}}/annotate" class="btn btn-primary btn-sm">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            Аннотировать
+                        </a>
+                        {{if .AnnotatedFilePath}}
+                        <a href="/classroom/submissions/{{.ID}}/view" class="btn btn-green btn-sm" target="_blank" rel="noopener">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            Аннотация
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+                {{else}}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg width="28" height="28" fill="none" stroke="var(--subtle)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    </div>
+                    <div class="empty-title">Пока никто не сдал работу</div>
+                    <div class="empty-sub">Студенты ещё не загрузили свои файлы</div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        {{if .Submissions}}
+        <!-- Grades table -->
+        <div class="grades-section animate delay-3">
+            <div class="submissions-header">
+                <span class="section-label">Таблица баллов</span>
+                <a href="/classroom/assignments/{{.Assignment.ID}}/grades.xlsx" class="btn btn-ghost btn-sm">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Excel
+                </a>
+            </div>
+            <div class="card" style="overflow:hidden;">
+                <table class="grades-table">
+                    <thead>
+                        <tr>
+                            <th>Студент</th>
+                            <th>Группа</th>
+                            <th>Балл / {{.Assignment.MaxScore}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Submissions}}
+                        {{if eq .Status "reviewed"}}
+                        <tr>
+                            <td>{{.StudentName}}</td>
+                            <td>{{if .StudentGroup}}{{.StudentGroup}}{{else}}—{{end}}</td>
+                            <td class="grade-cell {{if .Grade}}graded{{else}}ungraded{{end}}">
+                                {{if .Grade}}{{.Grade}}{{else}}—{{end}}
+                            </td>
+                        </tr>
+                        {{end}}
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Right column: stats -->
+        <div class="animate delay-3">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Статистика</span>
+                </div>
+                <div class="card-body">
+                    <div class="stat-row">
+                        <span class="stat-label">Всего сдано</span>
+                        <span class="stat-value">{{.Assignment.SubmitCount}}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Проверено</span>
+                        <span class="stat-value" style="color: var(--green);">{{.Assignment.ReviewedCount}}</span>
+                    </div>
+                    {{if gt .Assignment.SubmitCount 0}}
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted); text-align: right; margin-top: -14px; margin-bottom: 16px;" id="progressLabel"></div>
+                    {{else}}
+                    <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+                    <div style="font-size: 12px; color: var(--muted); text-align: right; margin-top: -14px; margin-bottom: 16px;">0% проверено</div>
+                    {{end}}
+
+                    <div class="stat-divider"></div>
+
+                    {{if .Assignment.Deadline}}
+                    <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">Дедлайн</div>
+                    <div style="font-size: 14px; font-weight: 600; color: var(--amber);">
+                        {{.Assignment.Deadline.Format "02.01.2006"}}
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">{{.Assignment.Deadline.Format "в 15:04"}}</div>
+                    {{else}}
+                    <div style="font-size: 13px; color: var(--subtle);">Дедлайн не задан</div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Progress bar
+    (function() {
+        var submit = {{.Assignment.SubmitCount}};
+        var reviewed = {{.Assignment.ReviewedCount}};
+        var fill = document.getElementById('progressFill');
+        var label = document.getElementById('progressLabel');
+        if (fill && submit > 0) {
+            var pct = Math.round(reviewed / submit * 100);
+            fill.style.width = pct + '%';
+            if (label) label.textContent = pct + '% проверено';
+        }
+    })();
+
+    // Авторизация XHR через Bearer из localStorage + cookie как fallback.
+    var authToken = localStorage.getItem('token') || '';
+    function authHeaders(json) {
+        var h = authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+        if (json) h['Content-Type'] = 'application/json';
+        return h;
+    }
+
+    function deleteAssignment() {
+        vmConfirm({
+            title: 'Удалить задание?',
+            message: 'Все работы студентов по этому заданию будут удалены. Это действие необратимо.',
+            danger: true,
+            onConfirm: function() {
+                fetch('/classroom/assignments/{{.Assignment.ID}}', { method: 'DELETE', headers: authHeaders() })
+                    .then(function() {
+                        location.href = '/classroom/subjects/{{.Assignment.SubjectID}}';
+                    });
+            }
+        });
+    }
+
+    // ── Teacher chat panel ──────────────────────────────────
+    var tcCurrentSid = 0;
+    var tcCurrentName = '';
+
+    function openTeacherChat(submissionId, studentName) {
+        tcCurrentSid = submissionId;
+        tcCurrentName = studentName;
+        var panel = document.getElementById('tcPanel');
+        var overlay = document.getElementById('tcOverlay');
+        document.getElementById('tcStudentName').textContent = studentName;
+        document.getElementById('tcStudentAvatar').textContent = studentName.charAt(0).toUpperCase();
+        panel.classList.add('open');
+        overlay.classList.add('open');
+        document.getElementById('tcMessages').innerHTML = '<div class="tc-loading">Загрузка...</div>';
+        loadTeacherChat();
+        // На мобиле НЕ фокусируем поле ввода: автофокус вызывает зум и проматывание
+        // экрана к инпуту. Сначала показываем весь чат — инпут пользователь тапнет сам.
+        if (window.matchMedia('(min-width: 700px)').matches) {
+            document.getElementById('tcInput').focus();
+        }
+    }
+
+    function closeTeacherChat() {
+        document.getElementById('tcPanel').classList.remove('open');
+        document.getElementById('tcOverlay').classList.remove('open');
+    }
+
+    function loadTeacherChat() {
+        if (!tcCurrentSid) return;
+        fetch('/classroom/submissions/' + tcCurrentSid + '/comments', { headers: authHeaders() })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var msgs = document.getElementById('tcMessages');
+                msgs.innerHTML = '';
+                if (!data || data.length === 0) {
+                    msgs.innerHTML = '<div class="tc-empty">Нет сообщений. Студент пока не задал вопросов.</div>';
+                    return;
+                }
+                data.forEach(function(c) {
+                    var div = document.createElement('div');
+                    div.className = 'tc-msg' + (c.user_type === 'teacher' ? ' teacher' : '');
+                    div.innerHTML =
+                        '<div class="tc-msg-meta"><span class="name">' + esc(c.user_name) + '</span><span>' + esc(c.created_at) + '</span></div>' +
+                        '<div class="tc-msg-text">' + esc(c.message) + '</div>';
+                    msgs.appendChild(div);
+                });
+                msgs.scrollTop = msgs.scrollHeight;
+            }).catch(function() {
+                document.getElementById('tcMessages').innerHTML = '<div class="tc-empty">Не удалось загрузить сообщения.</div>';
+            });
+    }
+
+    function sendTeacherReply() {
+        var ta = document.getElementById('tcInput');
+        var msg = ta.value.trim();
+        if (!msg || !tcCurrentSid) return;
+        var btn = document.getElementById('tcSendBtn');
+        btn.disabled = true;
+        fetch('/classroom/submissions/' + tcCurrentSid + '/comments', {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({message: msg})
+        }).then(function(r) {
+            if (r.ok) { ta.value = ''; ta.style.height = '38px'; loadTeacherChat(); }
+            else { showToast('Ошибка при отправке', 'error'); }
+        }).catch(function() { showToast('Ошибка сети', 'error'); })
+          .finally(function() { btn.disabled = false; });
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function saveGrade(submissionId) {
+        var input = document.getElementById('grade-' + submissionId);
+        var val = parseInt(input.value);
+        if (isNaN(val) || val < 0 || val > 100) {
+            showToast('Введите число от 0 до 100', 'warning');
+            return;
+        }
+        fetch('/classroom/submissions/' + submissionId + '/grade', {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({ grade: val })
+        }).then(function(res) {
+            if (res.ok) {
+                input.style.borderColor = 'var(--green)';
+                setTimeout(function() { input.style.borderColor = ''; }, 2000);
+            } else {
+                showToast('Ошибка сохранения оценки', 'error');
+            }
+        });
+    }
+</script>
+
+{{if .Assignment.AllowComments}}
+<div class="tc-overlay" id="tcOverlay" onclick="closeTeacherChat()"></div>
+<div class="tc-panel" id="tcPanel">
+    <div class="tc-header">
+        <div class="tc-avatar" id="tcStudentAvatar">?</div>
+        <div class="tc-title">
+            <div class="tc-name" id="tcStudentName"></div>
+            <div class="tc-sub">Личный чат</div>
+        </div>
+        <button class="tc-close" onclick="closeTeacherChat()">×</button>
+    </div>
+    <div class="tc-messages" id="tcMessages">
+        <div class="tc-empty">Выберите студента</div>
+    </div>
+    <div class="tc-input-area">
+        <textarea class="tc-textarea" id="tcInput" placeholder="Написать ответ..." rows="1"
+            oninput="this.style.height='38px';this.style.height=Math.min(this.scrollHeight,120)+'px'"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTeacherReply();}"></textarea>
+        <button class="tc-send" id="tcSendBtn" onclick="sendTeacherReply()">
+            <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+        </button>
+    </div>
+</div>
+{{end}}
+</body>
+</html>

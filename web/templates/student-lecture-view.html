@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Лекция — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<script>MathJax={loader:{load:['[tex]/boldsymbol']},tex:{packages:{'[+]':['boldsymbol']},inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]}};</script>
+<script id="MathJax-script" async src="/static/vendor/mathjax/es5/tex-mml-chtml.js"></script>
+<script src="/static/js/format-text.js"></script>
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--border:#e4e7ec;--text:#1a1d23;--muted:#6b7280;--accent:#2563eb;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);}
+
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:'Lora',serif;font-weight:600;font-size:18px;color:var(--text);text-decoration:none;}
+.topbar-title{font-size:14px;color:var(--muted);}
+.ws-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:auto;}
+.ws-badge.connected{background:#dcfce7;color:#166534;}
+.ws-badge.disconnected{background:#fee2e2;color:#991b1b;}
+.ws-badge.connecting{background:#fef9c3;color:#713f12;}
+.sync-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.sync-badge.synced{background:#dcfce7;color:#166534;}
+.sync-badge.unsynced{background:#fef9c3;color:#713f12;}
+.timer-badge{background:#fee2e2;color:#991b1b;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;font-family:monospace;}
+
+.shell{display:flex;min-height:calc(100vh - 56px);}
+
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;}
+.sb-section{margin-bottom:4px;}
+.sb-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 20px 4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:8px 20px;font-size:14px;color:var(--text);text-decoration:none;transition:background .15s;}
+.sb-link:hover{background:var(--bg);color:var(--accent);}
+.sb-link svg{flex-shrink:0;}
+
+.main{flex:1;padding:28px 32px;}
+.lecture-content{max-width:760px;margin:0 auto;}
+
+.module-card{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:28px;margin-bottom:24px;border-left:4px solid var(--accent);}
+.module-number{width:32px;height:32px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-bottom:14px;flex-shrink:0;}
+.module-title{font-family:'Lora',serif;font-size:20px;font-weight:600;margin-bottom:14px;color:var(--text);}
+.module-text{font-size:15px;line-height:1.7;color:var(--text);}
+.module-text p{margin-bottom:12px;}
+.latex-text{font-family:'Lora',serif;font-size:17px;line-height:1.8;}
+
+.question-card{background:var(--bg);border-radius:10px;padding:20px;margin:20px 0;border:1px solid var(--border);}
+.question-text-q{font-size:16px;font-weight:600;margin-bottom:16px;color:var(--text);}
+.option-label{display:flex;align-items:center;gap:10px;border:1.5px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:8px;cursor:pointer;font-size:14px;transition:border .15s,background .15s;background:var(--surface);}
+.option-label:hover{border-color:var(--accent);background:#eff6ff;}
+.option-label.selected{border-color:#16a34a;background:#f0fdf4;}
+.option-label input{flex-shrink:0;accent-color:#16a34a;width:16px;height:16px;}
+.hint-multi{font-size:12px;color:var(--muted);margin-bottom:8px;}
+
+.test-container{max-width:760px;margin:0 auto;}
+.test-card{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:28px;}
+.test-card h2{font-family:'Lora',serif;font-size:20px;font-weight:600;margin-bottom:6px;}
+.test-card p{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.test-q-block{margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.test-q-block:last-of-type{border-bottom:none;}
+.test-q-text{font-size:15px;font-weight:600;margin-bottom:12px;}
+.submit-test-btn{background:var(--accent);color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px;}
+.submit-test-btn:hover{background:#1d4ed8;}
+</style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <a href="/dashboard" class="topbar-logo">VisualMath</a>
+  <span class="topbar-title">Лекция #{{.LectureID}}</span>
+  <div id="testTimerWrap" style="display:none"><span id="testTimer" class="timer-badge"></span></div>
+  <span id="syncStatus" class="sync-badge synced" style="display:none">Синхронизировано</span>
+  <span id="wsStatus" class="ws-badge connecting">Подключение...</span>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Общее</div>
+      <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Classroom</div>
+      <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Мои предметы
+      </a>
+      <a href="/classroom/join" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Присоединиться к предмету
+      </a>
+      <a href="/student/join" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+        Присоединиться к лекции
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="lecture-content" id="lectureContent">
+      <div style="text-align:center;padding:60px;color:var(--muted)">Загрузка лекции...</div>
+    </div>
+
+    <div id="testContainer" style="display:none">
+      <div class="test-container"><div id="testContent"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const lectureId = "{{.LectureID}}";
+// Авторизация XHR через Bearer из localStorage (как во всём приложении) +
+// cookie как fallback. Раньше fetch полагался только на cookie.
+const token = localStorage.getItem('token') || '';
+function authHeaders() { return token ? { 'Authorization': 'Bearer ' + token } : {}; }
+let ws = null;
+let isSynced = true;
+let currentTest = null;
+let testAnswers = {};
+let pingInterval = null;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let pongReceived = true;   // получали ли pong на прошлый ping (детект half-open)
+let missedPongs = 0;
+const studentName = getCookie('full_name') || 'Студент';
+
+function getCookie(name) {
+    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? decodeURIComponent(v.pop()) : '';
+}
+
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = protocol + '//' + window.location.host + '/ws/session/' + lectureId + '/student';
+    ws = new WebSocket(wsUrl);
+    ws.onopen = function() {
+        updateWsStatus('connected', 'Подключено');
+        reconnectAttempts = 0;   // успешное соединение — сбрасываем backoff
+        pongReceived = true;
+        missedPongs = 0;
+        if (pingInterval) clearInterval(pingInterval);
+        pingInterval = setInterval(function() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            if (!pongReceived) {
+                missedPongs++;
+                if (missedPongs >= 2) {
+                    updateWsStatus('disconnected', 'Переподключение…');
+                    try { ws.close(); } catch (e) {}  // спровоцирует onclose → reconnect
+                    return;
+                }
+            }
+            pongReceived = false;
+            ws.send(JSON.stringify({ type: 'ping' }));
+        }, 30000);
+    };
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'pong') { pongReceived = true; missedPongs = 0; return; }
+        if (data.type === 'scroll' && isSynced) {
+            const percent = data.payload.position;
+            const height = document.body.scrollHeight - window.innerHeight;
+            window.scrollTo({ top: (percent / 100) * height, behavior: 'smooth' });
+        } else if (data.type === 'sync_status') {
+            isSynced = data.payload.synced;
+            const el = document.getElementById('syncStatus');
+            el.style.display = 'inline-flex';
+            el.className = 'sync-badge ' + (isSynced ? 'synced' : 'unsynced');
+            el.textContent = isSynced ? 'Синхронизировано' : 'Синхронизация отключена';
+        } else if (data.type === 'test_start') { showTest(data.payload); }
+        else if (data.type === 'test_end') { hideTest(); }
+        else if (data.type === 'test_score') { showStudentScore(data.payload); }
+        else if (data.type === 'lecture_end') { sendPendingAnswers(); setTimeout(showLectureEnd, 300); }
+    };
+    ws.onclose = function() {
+        clearInterval(pingInterval);
+        pingInterval = null;
+        updateWsStatus('disconnected', 'Переподключение…');
+        // Экспоненциальный backoff с джиттером: 1,2,4,8,15,15… секунд + до 1с разброса
+        const base = Math.min(15000, 1000 * Math.pow(2, reconnectAttempts));
+        const delay = base + Math.random() * 1000;
+        reconnectAttempts++;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connectWebSocket, delay);
+    };
+}
+
+function updateWsStatus(state, text) {
+    const el = document.getElementById('wsStatus');
+    el.className = 'ws-badge ' + state;
+    el.textContent = text;
+}
+
+async function loadLecture() {
+    try {
+        const response = await fetch('/api/lectures/' + lectureId, { headers: authHeaders() });
+        const lecture = await response.json();
+        displayLecture(lecture);
+    } catch (error) {
+        document.getElementById('lectureContent').innerHTML = '<div style="padding:40px;text-align:center;color:#dc2626">Ошибка загрузки лекции</div>';
+    }
+}
+
+function displayLecture(lecture) {
+    const container = document.getElementById('lectureContent');
+    let html = '';
+    if (lecture.modules && lecture.modules.length > 0) {
+        lecture.modules.forEach((module, index) => {
+            let contentHtml = '';
+            if (module.content) {
+                let c = module.content;
+                if (typeof c === 'string') { try { c = JSON.parse(c); } catch(e) {} }
+                if (module.type === 'text') {
+                    contentHtml = '<div class="latex-text">' + formatText(c.text || c) + '</div>';
+                } else if (module.type === 'question' || module.type === 'test') {
+                    const qs = Array.isArray(c) ? c : (c.questions || []);
+                    contentHtml = renderQuestionsOrTest(qs, module.id, module.type);
+                } else {
+                    contentHtml = typeof c === 'string' ? c : JSON.stringify(c);
+                }
+            } else {
+                contentHtml = '<p style="color:var(--muted)">Содержание отсутствует</p>';
+            }
+            html += '<div class="module-card">' +
+                '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div class="module-number">' + (index + 1) + '</div><h2 class="module-title" style="margin:0">' + formatTextEscape(module.title) + '</h2></div>' +
+                '<div class="module-text">' + contentHtml + '</div>' +
+                '</div>';
+        });
+    } else {
+        html = '<div style="padding:60px;text-align:center;color:var(--muted)">В лекции нет модулей</div>';
+    }
+    container.innerHTML = html;
+    if (window.MathJax) { MathJax.typesetPromise(); }
+}
+
+function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
+    return a;
+}
+
+function renderQuestionsOrTest(questions, moduleId, type) {
+    let html = '<div style="margin-top:10px">';
+    questions.forEach(function(q, i) {
+        var correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+        var isMulti = correctArr.length > 1;
+        html += '<div class="question-card">' +
+            '<p class="question-text-q">' + (i+1) + '. ' + formatText(q.question) + '</p>';
+        if (isMulti) {
+            html += '<p class="hint-multi">Выберите все правильные ответы</p>';
+        }
+        var inputType = isMulti ? 'checkbox' : 'radio';
+        var handler = isMulti
+            ? 'toggleChipCheckbox(this,' + moduleId + ',' + i + ')'
+            : 'highlightChip(this,' + moduleId + ',' + i + ')';
+        q.answers.forEach(function(a, ai) {
+            const uid = 'opt_' + moduleId + '_' + i + '_' + ai;
+            html += '<label id="lbl_' + uid + '" class="option-label">' +
+                '<input type="' + inputType + '" id="' + uid + '" name="q_' + moduleId + '_' + i + '" value="' + ai + '" ' +
+                'onchange="' + handler + '">' +
+                formatText(a) + '</label>';
+        });
+        html += '</div>';
+    });
+    html += '<p style="color:#16a34a;font-size:13px;margin-top:8px">✓ Ответы сохраняются автоматически</p></div>';
+    return html;
+}
+
+function highlightChip(input, moduleId, qIdx) {
+    document.querySelectorAll('input[name="q_' + moduleId + '_' + qIdx + '"]').forEach(function(inp) {
+        inp.parentElement.classList.remove('selected');
+    });
+    input.parentElement.classList.add('selected');
+    if (!testAnswers[moduleId]) testAnswers[moduleId] = {};
+    testAnswers[moduleId][qIdx] = parseInt(input.value);
+}
+
+function toggleChipCheckbox(input, moduleId, qIdx) {
+    input.parentElement.classList.toggle('selected', input.checked);
+    if (!testAnswers[moduleId]) testAnswers[moduleId] = {};
+    var current = Array.isArray(testAnswers[moduleId][qIdx]) ? testAnswers[moduleId][qIdx] : [];
+    var val = parseInt(input.value);
+    if (input.checked) {
+        if (current.indexOf(val) < 0) current.push(val);
+    } else {
+        current = current.filter(function(v) { return v !== val; });
+    }
+    testAnswers[moduleId][qIdx] = current;
+}
+
+function submitAnswers(moduleId) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'test_answer', payload: { module_id: parseInt(moduleId), student_name: studentName, answers: testAnswers[moduleId] || {} } }));
+        const btn = document.querySelector('.submit-btn[onclick="submitAnswers(' + moduleId + ')"]');
+        if (btn) { btn.textContent = 'Отправлено'; btn.disabled = true; btn.style.background = 'var(--muted)'; }
+    } else { showToast('Нет подключения к преподавателю', 'error'); }
+}
+
+function showTest(testData) {
+    currentTest = testData;
+    document.getElementById('testTimerWrap').style.display = 'block';
+    document.getElementById('lectureContent').style.display = 'none';
+    document.getElementById('testContainer').style.display = 'block';
+    let testHtml = '<div class="test-card">' +
+        '<h2>' + testData.title + '</h2>' +
+        '<p>Время: ' + testData.duration + ' сек</p>';
+    testData.questions.forEach((question, index) => {
+        testHtml += '<div class="test-q-block">' +
+            '<p class="test-q-text">' + (index + 1) + '. ' + question.text + '</p>';
+        question.options.forEach((option, optIndex) => {
+            testHtml += '<label style="display:block;margin-bottom:8px;cursor:pointer;font-size:14px">' +
+                '<input type="radio" name="test_q' + question.id + '" value="' + optIndex + '" onchange="saveTestAnswer(' + question.id + ',' + optIndex + ')"> ' +
+                option + '</label>';
+        });
+        testHtml += '</div>';
+    });
+    testHtml += '<button class="submit-test-btn" onclick="submitTest()">Отправить тест</button></div>';
+    document.getElementById('testContent').innerHTML = testHtml;
+    startTestTimer(testData.duration);
+}
+
+function startTestTimer(duration) {
+    let timeLeft = duration;
+    const timerEl = document.getElementById('testTimer');
+    const timer = setInterval(() => {
+        timeLeft--;
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        if (timeLeft <= 0) { clearInterval(timer); submitTest(); }
+    }, 1000);
+}
+
+function saveTestAnswer(questionId, answerIndex) { testAnswers[questionId] = answerIndex; }
+
+function submitTest() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'test_completed', payload: { answers: testAnswers } }));
+        showToast('Тест отправлен!', 'success');
+        hideTest();
+    }
+}
+
+function showStudentScore(payload) {
+    const correct = payload.correct || 0;
+    const total = payload.total || 0;
+    const score10 = payload.score10 || 0;
+    if (total === 0) return;
+    const overlay = document.getElementById('scoreOverlay');
+    if (overlay) overlay.remove();
+    const div = document.createElement('div');
+    div.id = 'scoreOverlay';
+    div.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--surface);border-radius:12px;padding:20px 24px;box-shadow:0 4px 24px rgba(0,0,0,.15);z-index:9999;border-left:4px solid #16a34a;min-width:200px;font-family:DM Sans,sans-serif;';
+    div.innerHTML = '<p style="margin:0 0 4px 0;font-weight:600;color:var(--text);font-size:14px">Ответы приняты</p>' +
+        '<p style="margin:0;color:var(--muted);font-size:13px">Правильно: ' + correct + '/' + total + '</p>' +
+        '<p style="margin:4px 0 0 0;font-size:22px;font-weight:700;color:#16a34a">' + score10.toFixed(1) + ' / 10</p>';
+    document.body.appendChild(div);
+}
+
+function showLectureEnd() {
+    document.getElementById('lectureContent').style.opacity = '0.4';
+    if (document.getElementById('lectureEndOverlay')) return;
+    const div = document.createElement('div');
+    div.id = 'lectureEndOverlay';
+    div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(26,29,35,0.8);display:flex;align-items:center;justify-content:center;z-index:9998';
+    const scoreEl = document.getElementById('scoreOverlay');
+    const scoreHtml = scoreEl ? scoreEl.innerHTML : '';
+    div.innerHTML = '<div style="background:var(--surface);border-radius:16px;padding:40px;text-align:center;max-width:400px;width:90%;font-family:DM Sans,sans-serif;">' +
+        '<div style="font-size:48px;margin-bottom:16px">🎓</div>' +
+        '<h2 style="font-family:Lora,serif;font-size:22px;margin:0 0 10px 0">Лекция завершена</h2>' +
+        (scoreHtml ? '<div style="background:var(--bg);border-radius:10px;padding:16px;margin:16px 0">' + scoreHtml + '</div>' : '') +
+        '<a href="/dashboard" style="display:inline-block;margin-top:20px;padding:12px 28px;background:var(--accent);color:white;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">На главную</a></div>';
+    document.body.appendChild(div);
+}
+
+function hideTest() {
+    document.getElementById('lectureContent').style.display = 'block';
+    document.getElementById('testContainer').style.display = 'none';
+    document.getElementById('testTimerWrap').style.display = 'none';
+    currentTest = null;
+    testAnswers = {};
+}
+
+function sendPendingAnswers() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    for (var moduleId in testAnswers) {
+        var answers = testAnswers[moduleId];
+        if (Object.keys(answers).length > 0) {
+            ws.send(JSON.stringify({ type: 'test_answer', payload: { module_id: parseInt(moduleId), student_name: studentName, answers: answers } }));
+        }
+    }
+}
+
+window.addEventListener('beforeunload', () => { sendPendingAnswers(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { sendPendingAnswers(); } });
+window.addEventListener('DOMContentLoaded', function() { connectWebSocket(); loadLecture(); });
+</script>
+</body>
+</html>

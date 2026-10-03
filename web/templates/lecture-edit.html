@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Редактировать лекцию — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--border:#e4e7ec;--text:#1a1d23;--muted:#6b7280;--accent:#2563eb;--accent-hover:#1d4ed8;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:'Lora',serif;font-weight:600;font-size:18px;color:var(--text);text-decoration:none;}
+.topbar-back{font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px;}
+.topbar-back:hover{color:var(--text);}
+
+.shell{display:flex;min-height:calc(100vh - 56px);}
+
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;}
+.sb-section{margin-bottom:4px;}
+.sb-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 20px 4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:8px 20px;font-size:14px;color:var(--text);text-decoration:none;transition:background .15s;}
+.sb-link:hover{background:var(--bg);color:var(--accent);}
+.sb-link svg{flex-shrink:0;}
+
+.main{flex:1;padding:28px 32px;overflow:hidden;}
+.page-heading{font-family:'Lora',serif;font-size:24px;font-weight:600;margin-bottom:24px;}
+
+.message{padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;display:none;}
+.message-success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;display:block;}
+.message-error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;display:block;}
+
+.loading{text-align:center;padding:60px;color:var(--muted);}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+
+.card{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:28px;}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:20px;}
+
+.field{margin-bottom:20px;}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;}
+input[type=text],select,textarea{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--surface);transition:border .15s;outline:none;}
+input[type=text]:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+textarea{min-height:80px;resize:vertical;}
+
+.checkbox-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.checkbox-row:last-child{border-bottom:none;}
+.checkbox-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;}
+.checkbox-row label{font-size:14px;cursor:pointer;}
+.radio-group{display:flex;flex-direction:column;gap:0;}
+.radio-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.radio-row:last-child{border-bottom:none;}
+.radio-row input[type=radio]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;cursor:pointer;}
+.radio-row label{font-size:14px;cursor:pointer;}
+
+.form-actions{display:flex;gap:12px;padding-top:20px;border-top:1px solid var(--border);margin-top:4px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 22px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .15s;}
+.btn:hover{opacity:.9;}
+.btn-save{background:var(--accent);color:#fff;flex:2;}
+.btn-cancel{background:var(--bg);color:var(--text);border:1.5px solid var(--border);flex:1;}
+.btn-delete{background:#fee2e2;color:#dc2626;flex:1;}
+.btn-delete:hover{background:#fecaca;opacity:1;}
+
+/* Modules */
+.modules-drop{border:2px dashed var(--border);border-radius:10px;padding:16px;min-height:200px;margin-bottom:20px;background:var(--bg);}
+.module-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;transition:box-shadow .15s;}
+.module-item:hover{box-shadow:0 2px 8px rgba(37,99,235,.1);border-color:var(--accent);}
+.mi-title{font-size:14px;font-weight:500;color:var(--text);}
+.mi-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.mi-actions{display:flex;gap:6px;flex-shrink:0;}
+.mi-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:border .15s,color .15s;}
+.mi-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.mi-btn:disabled{opacity:.35;cursor:default;}
+.mi-btn.remove:hover{border-color:#dc2626;color:#dc2626;}
+.mi-count{font-size:13px;color:var(--muted);margin-bottom:12px;}
+
+.empty-mod{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-mod p{font-size:14px;}
+
+.filter-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.filter-btn{padding:5px 12px;border:1.5px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;font-family:inherit;color:var(--text);}
+.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.search-inp{width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px;transition:border .15s;}
+.search-inp:focus{border-color:var(--accent);}
+.avail-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;}
+.avail-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.avail-item:last-child{border-bottom:none;}
+.avail-item:hover{background:#eff6ff;}
+</style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <a href="/dashboard" class="topbar-logo">VisualMath</a>
+  <a href="/lectures/view/{{.LectureID}}" class="topbar-back">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Назад к лекции
+  </a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Общее</div>
+      <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Контент</div>
+      <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Библиотека модулей
+      </a>
+      <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Мои лекции
+      </a>
+      <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+        Начать лекцию
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Classroom</div>
+      <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Мои предметы
+      </a>
+      <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Создать предмет
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Создание</div>
+      <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+      </a>
+      <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать лекцию
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="page-heading">Редактировать лекцию</div>
+
+    <div id="message" class="message"></div>
+    <div id="loadingState" class="loading">Загрузка...</div>
+
+    <div class="two-col" id="mainContent" style="display:none">
+      <!-- Left: form -->
+      <div>
+        <div class="card">
+          <div class="card-title">Информация о лекции</div>
+          <div class="field">
+            <label>Название <span style="color:var(--accent)">*</span></label>
+            <input type="text" id="lectureTitle" required placeholder="Название лекции">
+          </div>
+          <div class="field">
+            <label>Предмет <span style="color:var(--accent)">*</span></label>
+            <select id="lectureCourse">
+              <option value="Математический анализ">Математический анализ</option>
+              <option value="Линейная алгебра и аналитическая геометрия">Линейная алгебра и аналитическая геометрия</option>
+              <option value="Дискретная математика">Дискретная математика</option>
+              <option value="Физика">Физика</option>
+              <option value="Экономика">Экономика</option>
+              <option value="Дифференциальные уравнения">Дифференциальные уравнения</option>
+              <option value="Теория вероятностей">Теория вероятностей</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Описание</label>
+            <textarea id="lectureDescription"></textarea>
+          </div>
+          <div class="field">
+            <label>Публикация</label>
+            <div class="radio-group">
+              <label class="radio-row">
+                <input type="radio" name="publication" value="unpublished">
+                <span>Не публиковать</span>
+              </label>
+              <label class="radio-row">
+                <input type="radio" name="publication" value="with_tests">
+                <span>Опубликовать с тестами</span>
+              </label>
+              <label class="radio-row">
+                <input type="radio" name="publication" value="without_tests">
+                <span>Опубликовать без тестов</span>
+              </label>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Навигация</label>
+            <div class="checkbox-row">
+              <input type="checkbox" id="allowBack">
+              <label for="allowBack">Разрешить возврат к пройденным слайдам</label>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px;padding:20px 28px">
+          <div class="form-actions">
+            <button class="btn btn-save" onclick="updateLecture()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v13a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/></svg>
+              Сохранить
+            </button>
+            <a href="/lectures/view/{{.LectureID}}" class="btn btn-cancel">Отмена</a>
+            <button class="btn btn-delete" onclick="deleteLecture()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+              Удалить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: modules -->
+      <div class="card">
+        <div class="card-title">Состав лекции</div>
+        <div class="mi-count" id="modulesCountLabel">0 модулей</div>
+        <div class="modules-drop" id="modulesList">
+          <div class="empty-mod"><p>Нет модулей. Добавьте из библиотеки ниже</p></div>
+        </div>
+
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:12px;">Добавить модули</div>
+        <input type="text" class="search-inp" id="moduleSearch" placeholder="Поиск..." oninput="displayAvailableModules()">
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="setFilter('all',this)">Все</button>
+          <button class="filter-btn" onclick="setFilter('text',this)">Текст</button>
+          <button class="filter-btn" onclick="setFilter('question',this)">Вопросы</button>
+          <button class="filter-btn" onclick="setFilter('test',this)">Тесты</button>
+        </div>
+        <div class="avail-list" id="availableModules"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const lectureId = '{{.LectureID}}';
+// Авторизация XHR через Bearer из localStorage + cookie как fallback.
+const authToken = localStorage.getItem('token') || '';
+function authHeaders(json) {
+    var h = authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+}
+let selectedModules = [];
+let allModules = [];
+let currentFilter = 'all';
+const typeIcons = {text:'📝', question:'❓', test:'📋'};
+
+async function init() {
+    try {
+        const resp = await fetch('/api/lectures/' + lectureId, { headers: authHeaders() });
+        if (!resp.ok) throw new Error('Лекция не найдена');
+        const lecture = await resp.json();
+
+        document.getElementById('lectureTitle').value = lecture.title || '';
+        document.getElementById('lectureDescription').value = lecture.description || '';
+        document.getElementById('allowBack').checked = !!lecture.allow_back;
+        const pubMode = !lecture.published ? 'unpublished' : (lecture.hide_tests ? 'without_tests' : 'with_tests');
+        document.querySelector('input[name="publication"][value="'+pubMode+'"]').checked = true;
+
+        const sel = document.getElementById('lectureCourse');
+        for (let opt of sel.options) {
+            if (opt.value === lecture.course_name) { opt.selected = true; break; }
+        }
+
+        selectedModules = (lecture.modules || []).map(m => ({
+            id: m.id, title: m.title, type: m.type,
+            course: m.course || '', author: m.author_name || ''
+        }));
+
+        const mResp = await fetch('/api/modules/available', { headers: authHeaders() });
+        allModules = mResp.ok ? await mResp.json() : [];
+
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'grid';
+        updateModulesList();
+        displayAvailableModules();
+    } catch(e) {
+        document.getElementById('loadingState').textContent = 'Ошибка: ' + e.message;
+    }
+}
+
+var dragSrcIdx = null;
+
+function updateModulesList() {
+    const container = document.getElementById('modulesList');
+    document.getElementById('modulesCountLabel').textContent = selectedModules.length + ' модул' + (selectedModules.length === 1 ? 'ь' : selectedModules.length < 5 ? 'я' : 'ей');
+    if (selectedModules.length === 0) {
+        container.innerHTML = '<div class="empty-mod"><p>Нет модулей. Добавьте из библиотеки ниже</p></div>';
+        return;
+    }
+    container.innerHTML = selectedModules.map(function(m, i) {
+        return '<div class="module-item" draggable="true" data-idx="' + i + '" style="cursor:grab">' +
+            '<span style="color:var(--muted);margin-right:8px;font-size:16px;cursor:grab">⠿</span>' +
+            '<div style="flex:1;min-width:0"><div class="mi-title">' + (typeIcons[m.type]||'📄') + ' ' + m.title + '</div>' +
+            '<div class="mi-meta">' + m.type + (m.course ? ' · ' + m.course : '') + '</div></div>' +
+            '<div class="mi-actions">' +
+            '<button class="mi-btn" onclick="moveUp(' + i + ')" ' + (i===0?'disabled':'') + '>↑</button>' +
+            '<button class="mi-btn" onclick="moveDown(' + i + ')" ' + (i===selectedModules.length-1?'disabled':'') + '>↓</button>' +
+            '<button class="mi-btn remove" onclick="removeModule(' + i + ')">×</button>' +
+            '</div></div>';
+    }).join('');
+
+    container.querySelectorAll('.module-item').forEach(function(el) {
+        el.addEventListener('dragstart', function(e) {
+            dragSrcIdx = parseInt(el.dataset.idx);
+            e.dataTransfer.effectAllowed = 'move';
+            el.style.opacity = '0.4';
+        });
+        el.addEventListener('dragend', function() { el.style.opacity = ''; });
+        el.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            container.querySelectorAll('.module-item').forEach(function(x) { x.style.borderTop = ''; x.style.borderBottom = ''; });
+            var rect = el.getBoundingClientRect();
+            var mid = rect.top + rect.height / 2;
+            if (e.clientY < mid) el.style.borderTop = '2px solid var(--accent)';
+            else el.style.borderBottom = '2px solid var(--accent)';
+        });
+        el.addEventListener('dragleave', function() { el.style.borderTop = ''; el.style.borderBottom = ''; });
+        el.addEventListener('drop', function(e) {
+            e.preventDefault();
+            el.style.borderTop = ''; el.style.borderBottom = '';
+            var dstIdx = parseInt(el.dataset.idx);
+            if (dragSrcIdx === null || dragSrcIdx === dstIdx) return;
+            var rect = el.getBoundingClientRect();
+            var insertBefore = e.clientY < rect.top + rect.height / 2;
+            var item = selectedModules.splice(dragSrcIdx, 1)[0];
+            var newDst = dragSrcIdx < dstIdx ? (insertBefore ? dstIdx - 1 : dstIdx) : (insertBefore ? dstIdx : dstIdx + 1);
+            selectedModules.splice(newDst, 0, item);
+            dragSrcIdx = null;
+            updateModulesList();
+            displayAvailableModules();
+        });
+    });
+}
+
+function displayAvailableModules() {
+    const query = document.getElementById('moduleSearch').value.toLowerCase();
+    const container = document.getElementById('availableModules');
+    const filtered = allModules.filter(m =>
+        !selectedModules.some(s => s.id === m.id) &&
+        (currentFilter === 'all' || m.type === currentFilter) &&
+        (!query || m.title.toLowerCase().includes(query) || (m.course||'').toLowerCase().includes(query))
+    );
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-mod"><p>Нет доступных модулей</p></div>';
+        return;
+    }
+    container.innerHTML = filtered.map(function(m) {
+        return '<div class="avail-item" onclick="addModule(' + m.id + ')">' +
+            '<div class="mi-title">' + (typeIcons[m.type]||'📄') + ' ' + m.title + '</div>' +
+            '<div class="mi-meta">' + m.type + (m.course ? ' · '+m.course : '') + '</div>' +
+            '</div>';
+    }).join('');
+}
+
+function addModule(id) {
+    const m = allModules.find(m => m.id === id);
+    if (!m) return;
+    selectedModules.push({id: m.id, title: m.title, type: m.type, course: m.course||'', author: m.author||''});
+    updateModulesList(); displayAvailableModules();
+}
+function moveUp(i) { if(i>0){[selectedModules[i],selectedModules[i-1]]=[selectedModules[i-1],selectedModules[i]]; updateModulesList();} }
+function moveDown(i) { if(i<selectedModules.length-1){[selectedModules[i],selectedModules[i+1]]=[selectedModules[i+1],selectedModules[i]]; updateModulesList();} }
+function removeModule(i) { selectedModules.splice(i,1); updateModulesList(); displayAvailableModules(); }
+function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    displayAvailableModules();
+}
+
+async function updateLecture() {
+    const title = document.getElementById('lectureTitle').value.trim();
+    const course = document.getElementById('lectureCourse').value;
+    if (!title) { showMessage('Укажите название', 'error'); return; }
+    if (selectedModules.length === 0) { showMessage('Добавьте хотя бы один модуль', 'error'); return; }
+    try {
+        const pubMode = document.querySelector('input[name="publication"]:checked').value;
+        const resp = await fetch('/api/lectures/' + lectureId, {
+            method: 'PUT',
+            headers: authHeaders(true),
+            body: JSON.stringify({
+                title, course_name: course,
+                description: document.getElementById('lectureDescription').value,
+                module_ids: selectedModules.map(m => m.id),
+                allow_back: document.getElementById('allowBack').checked,
+                published: pubMode !== 'unpublished',
+                hide_tests: pubMode === 'without_tests'
+            })
+        });
+        const result = await resp.json();
+        if (resp.ok) { showMessage('Сохранено!', 'success'); }
+        else { showMessage((result.message || result.error || 'Ошибка'), 'error'); }
+    } catch(e) { showMessage('Ошибка сети: ' + e.message, 'error'); }
+}
+
+function deleteLecture() {
+    vmConfirm({
+        title: 'Удалить лекцию?',
+        message: 'Это действие нельзя отменить. Лекция будет удалена навсегда.',
+        danger: true,
+        onConfirm: async function() {
+            const resp = await fetch('/api/lectures/' + lectureId, {method: 'DELETE', headers: authHeaders()});
+            const result = await resp.json();
+            if (result.success || resp.ok) { window.location.href = '/lectures'; }
+            else { showMessage((result.message || 'Ошибка'), 'error'); }
+        }
+    });
+}
+
+function showMessage(text, type) {
+    const el = document.getElementById('message');
+    el.textContent = text;
+    el.className = 'message message-' + type;
+    setTimeout(() => { el.className = 'message'; }, 5000);
+}
+
+init();
+</script>
+</body>
+</html>

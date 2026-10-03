@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление лекцией — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <script>
+        MathJax = {
+            loader: { load: ['[tex]/boldsymbol'] },
+            tex: { packages: { '[+]': ['boldsymbol'] }, inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="/static/vendor/mathjax/es5/tex-mml-chtml.js"></script>
+    <script src="/static/js/format-text.js"></script>
+    <script src="/static/vendor/plotly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #fff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --subtle: #9ca3af;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --green: #16a34a;
+            --green-light: #dcfce7;
+            --red: #dc2626;
+            --topbar-h: 58px;
+            --radius: 10px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+        /* ── Topbar ── */
+        .topbar {
+            height: var(--topbar-h);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 17px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+        .topbar-title { font-size: 14px; font-weight: 500; color: var(--text); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+        /* Sync badge */
+        .sync-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 99px;
+            font-size: 12px; font-weight: 700; letter-spacing: .03em;
+            transition: all .2s;
+        }
+        .sync-on  { background: var(--green-light); color: var(--green); }
+        .sync-off { background: #fee2e2; color: var(--red); }
+        .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .sync-on .sync-dot { animation: pulse 1.4s infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 8px;
+            font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+            cursor: pointer; text-decoration: none; border: none;
+            transition: all .15s;
+        }
+        .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-accent { background: var(--accent); color: #fff; }
+        .btn-accent:hover { background: #1d4ed8; }
+        .btn-green { background: var(--green); color: #fff; }
+        .btn-green:hover { background: #15803d; }
+        .btn-amber { background: #d97706; color: #fff; }
+        .btn-amber:hover { background: #b45309; }
+        .btn-red { background: var(--red); color: #fff; }
+        .btn-red:hover { background: #b91c1c; }
+        .btn-muted { background: #f3f4f6; color: var(--muted); border: 1.5px solid var(--border); }
+        .btn-muted:hover { background: var(--bg); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+        /* ── 3-col layout ── */
+        .workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 230px 1fr 270px;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* ── Left: slides list ── */
+        .slides-panel {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 14px 16px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--subtle);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-count { font-size: 11px; color: var(--subtle); font-weight: 600; }
+        .slides-scroll { flex: 1; overflow-y: auto; padding: 10px 10px; }
+
+        .slide-item {
+            padding: 11px 12px;
+            margin-bottom: 6px;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .slide-item:hover { background: var(--accent-light); border-color: #bfdbfe; }
+        .slide-item.active { background: var(--accent-light); border-color: var(--accent); }
+        .slide-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 3px;
+        }
+        .slide-item.active .slide-item-title { color: var(--accent); }
+        .slide-item-meta { font-size: 11px; color: var(--subtle); }
+
+        .type-dot {
+            display: inline-block; width: 6px; height: 6px;
+            border-radius: 50%; margin-right: 5px; vertical-align: middle;
+        }
+        .dot-text     { background: var(--green); }
+        .dot-visual   { background: #0369a1; }
+        .dot-question { background: #d97706; }
+        .dot-test     { background: var(--red); }
+
+        /* ── Center: slide preview ── */
+        .preview-panel {
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+        }
+        .preview-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .slide-title-display {
+            font-family: 'Lora', serif;
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+        .slide-pos { font-size: 12px; color: var(--subtle); }
+        .preview-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+        .slide-content {
+            font-family: 'Lora', serif;
+            font-size: 16px;
+            line-height: 1.75;
+            color: var(--text);
+        }
+        .slide-content p { margin-bottom: 14px; }
+
+        /* q-items in slides */
+        .slide-content .q-item {
+            background: var(--bg); border-radius: 10px;
+            padding: 16px 18px; margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .preview-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            background: var(--surface);
+        }
+        .slide-counter { font-size: 13px; color: var(--muted); margin-left: auto; font-weight: 500; }
+
+        /* Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .stat-cell {
+            padding: 10px 16px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+        .stat-cell:last-child { border-right: none; }
+        .stat-val { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: var(--accent); }
+        .stat-lbl { font-size: 11px; color: var(--subtle); text-transform: uppercase; letter-spacing: .05em; margin-top: 1px; }
+
+        /* Мобильный дублёр кнопки завершения (на десктопе скрыт) */
+        .end-area-mobile { display: none; }
+
+        /* ── Right: students + controls ── */
+        .students-panel {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .students-scroll { flex: 1; overflow-y: auto; padding: 10px; }
+
+        .student-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            margin-bottom: 6px;
+        }
+        .student-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: var(--accent-light); color: var(--accent);
+            font-size: 12px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .student-name { font-size: 13px; font-weight: 600; color: var(--text); }
+        .student-group { font-size: 11px; color: var(--subtle); }
+
+        .empty-students {
+            text-align: center;
+            padding: 28px 16px;
+            font-size: 13px;
+            color: var(--subtle);
+        }
+
+        /* Join box */
+        .join-box {
+            margin: 0;
+            padding: 14px 14px;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+        }
+        .join-box-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--subtle); margin-bottom: 8px; }
+        .join-link-row { display: flex; gap: 6px; }
+        .join-link-input {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            font-family: monospace;
+            font-size: 11px;
+            color: var(--text);
+            background: var(--bg);
+            outline: none;
+        }
+
+        /* End btn area */
+        .end-area {
+            padding: 12px 14px;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+        }
+
+        /* End overlay */
+        .end-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,.85);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        }
+        .end-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 40px 44px;
+            text-align: center;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 24px 64px rgba(0,0,0,.3);
+        }
+        .end-icon { width: 64px; height: 64px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+        .end-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+        .end-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+        .end-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+        /* ── Адаптация: планшет ── */
+        @media (max-width: 1000px) {
+            /* Прячем правую панель студентов, оставляем список слайдов + центр */
+            .workspace { grid-template-columns: 200px 1fr; }
+            .students-panel { display: none; }
+            /* Правая панель скрыта — возвращаем кнопку «Завершить лекцию» внизу центра,
+               но компактно и только на последнем слайде (класс show-end из showSlide) */
+            .end-area-mobile.show-end {
+                display: block;
+                padding: 6px 16px;
+                border-top: 1px solid var(--border);
+                background: var(--surface);
+                flex-shrink: 0;
+                text-align: center;
+            }
+            .end-area-mobile .btn { width: auto; padding: 6px 14px; font-size: 13px; }
+        }
+        /* ── Адаптация: телефон ── */
+        @media (max-width: 720px) {
+            /* Только центральная область — слайд и управление на всю ширину */
+            .workspace { grid-template-columns: 1fr; }
+            .slides-panel { display: none; }
+            .topbar { padding: 0 10px; gap: 6px; }
+            .topbar-sep { display: none; }
+            .topbar-title { max-width: 96px; }
+            /* Топбар препода переполнял строку (scrollWidth 452): прячем подпись
+               синхронизации — оставляем только цветную точку-индикатор; кнопки
+               компактнее. Ссылка «Дашборд» с svg схлопывается mobile-nav.js. */
+            .sync-badge #syncLabel { display: none; }
+            .sync-badge { padding: 6px; gap: 0; }
+            .topbar-right { gap: 6px; }
+            .topbar-right .btn-ghost { padding: 6px 9px; font-size: 12px; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-sep"></div>
+    <div class="topbar-title" id="topbarTitle">Лекция #{{.LectureID}}</div>
+    <div class="topbar-right">
+        <span class="sync-badge sync-on" id="syncStatus">
+            <span class="sync-dot"></span>
+            <span id="syncLabel">Синхронизация вкл</span>
+        </span>
+        <button class="btn btn-ghost" onclick="toggleSync()" id="syncBtn">Выкл</button>
+        <a href="/dashboard" class="btn btn-ghost">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            Дашборд
+        </a>
+    </div>
+</header>
+
+<!-- 3-col workspace -->
+<div class="workspace">
+
+    <!-- Left: slides -->
+    <div class="slides-panel">
+        <div class="panel-header">
+            Слайды
+            <span class="panel-count" id="slideCountBadge">0</span>
+        </div>
+        <div class="slides-scroll" id="slidesList">
+            <div class="empty-students">Загрузка...</div>
+        </div>
+    </div>
+
+    <!-- Center: preview -->
+    <div class="preview-panel">
+        <div class="preview-header">
+            <div class="slide-title-display" id="slideTitle">Загрузка...</div>
+            <div class="slide-pos">Слайд <span id="currentSlideNum">1</span> из <span id="totalSlides">—</span></div>
+        </div>
+        <div class="preview-body">
+            <div id="slideContent" class="slide-content">
+                <div style="color:var(--subtle);font-size:14px;">Загрузка слайда...</div>
+            </div>
+        </div>
+        <div class="preview-footer">
+            <button class="btn btn-ghost" onclick="prevSlide()" id="prevBtn">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                Назад
+            </button>
+            <button class="btn btn-accent" onclick="nextSlide()" id="nextBtn">
+                Вперёд
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button class="btn btn-amber" id="completeModuleBtn" onclick="completeModule()" style="display:none;">
+                Завершить модуль
+            </button>
+            <button class="btn btn-amber" id="endPollBtn" onclick="endPoll()" style="display:none;">
+                Завершить опрос
+            </button>
+            <a id="resultsLink" href="#" target="_blank" class="btn btn-accent" style="display:none;margin-left:4px;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Результаты
+            </a>
+            <button class="btn btn-ghost" onclick="openPollModal()" id="addPollBtn" style="margin-left:auto;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Опрос
+            </button>
+        </div>
+        <div class="stats-row">
+            <div class="stat-cell">
+                <div class="stat-val" id="studentsCount">0</div>
+                <div class="stat-lbl">Студентов</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-val" id="currentTime">00:00</div>
+                <div class="stat-lbl">Время</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-val" id="progressStat">0%</div>
+                <div class="stat-lbl">Прогресс</div>
+            </div>
+        </div>
+        <!-- Завершить лекцию — дублёр для узких экранов; виден только на последнем слайде -->
+        <div class="end-area-mobile" id="endAreaMobile">
+            <button class="btn btn-red" onclick="endLecture()">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Завершить лекцию
+            </button>
+        </div>
+    </div>
+
+    <!-- Right: students -->
+    <div class="students-panel">
+        <div class="panel-header">
+            Студенты
+            <span class="panel-count" id="studentCountBadge">0</span>
+        </div>
+        <div class="students-scroll" id="studentsList">
+            <div class="empty-students">Ожидание подключения...</div>
+        </div>
+        <div class="join-box">
+            <div class="join-box-label">Ссылка для студентов</div>
+            <div class="join-link-row">
+                <input type="text" class="join-link-input" id="studentLink" readonly>
+                <button class="btn btn-green" onclick="copyLink()" id="copyBtn">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="end-area">
+            <button class="btn btn-red" onclick="endLecture()" style="width:100%;justify-content:center;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Завершить лекцию
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка создания опроса -->
+<div id="pollModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;width:480px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.18);">
+        <div style="font-family:'Lora',serif;font-size:18px;font-weight:600;margin-bottom:20px;">Новый опрос</div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Вопрос</label>
+            <textarea id="pollQuestion" rows="3" placeholder="Введите вопрос (поддерживается LaTeX: $формула$)" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;"></textarea>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Варианты ответов</label>
+            <div id="pollOptions"></div>
+            <button onclick="addPollOption()" style="background:none;border:1.5px dashed var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;width:100%;margin-top:6px;">+ Добавить вариант</button>
+        </div>
+        <div style="margin-bottom:20px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Позиция слайда</label>
+            <input type="number" id="pollPosition" min="1" style="width:100px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+            <span style="font-size:12px;color:var(--muted);margin-left:8px;">по умолчанию — следующий после текущего</span>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="closePollModal()" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:none;font-size:14px;cursor:pointer;">Отмена</button>
+            <button onclick="submitPoll()" style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Запустить опрос</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка результатов опроса -->
+<div id="pollResultsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;width:520px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.18);">
+        <div style="font-family:'Lora',serif;font-size:18px;font-weight:600;margin-bottom:6px;">Результаты опроса</div>
+        <div id="pollResultsQuestion" style="font-size:14px;color:var(--muted);margin-bottom:20px;"></div>
+        <div id="pollResultsBars"></div>
+        <div style="text-align:right;margin-top:20px;">
+            <button onclick="closePollResults()" style="padding:9px 24px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const lectureId = "{{.LectureID}}";
+    const sessionId = new URLSearchParams(window.location.search).get('session') || generateSessionId();
+    // Авторизация XHR через Bearer из localStorage + cookie как fallback.
+    const authToken = localStorage.getItem('token') || '';
+    function authHeaders() { return authToken ? { 'Authorization': 'Bearer ' + authToken } : {}; }
+    let slides = [];
+    let currentSlideIndex = 0;
+    let pendingRestoreIndex = null; // сохранённый индекс слайда при обновлении страницы
+    let students = [];
+    let ws = null;
+    let isSynced = true;
+    const completedModuleIds = new Set();
+
+    // Таймер привязан к сессии и переживает перезагрузку страницы:
+    // при первом заходе сохраняем старт в localStorage, при перезагрузке — читаем его.
+    let startTime;
+    (function initStartTime() {
+        const key = 'vm_lecture_start_' + sessionId;
+        const saved = localStorage.getItem(key);
+        if (saved && !isNaN(+saved)) {
+            startTime = new Date(+saved);
+        } else {
+            startTime = new Date();
+            localStorage.setItem(key, String(startTime.getTime()));
+        }
+    })();
+
+    function generateSessionId() {
+        return 'session-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    async function loadLecture() {
+        try {
+            const response = await fetch('/api/lectures/' + lectureId, { headers: authHeaders() });
+            const lecture = await response.json();
+            document.getElementById('topbarTitle').textContent = lecture.title || ('Лекция #' + lectureId);
+            document.title = (lecture.title || 'Лекция') + ' — VisualMath';
+
+            if (lecture.modules && lecture.modules.length > 0) {
+                slides = lecture.modules;
+                renderSlidesList();
+                const stateResp = await fetch('/api/sessions/' + sessionId + '/state', { headers: authHeaders() });
+                let startIndex = 0;
+                if (stateResp.ok) {
+                    const state = await stateResp.json();
+                    if (state.slide_index > 0) {
+                        pendingRestoreIndex = state.slide_index;
+                        startIndex = Math.min(state.slide_index, slides.length - 1);
+                    }
+                }
+                const cmResp = await fetch('/api/sessions/' + sessionId + '/completed_modules', { headers: authHeaders() });
+                if (cmResp.ok) {
+                    const cmData = await cmResp.json();
+                    (cmData.completed_module_ids || []).forEach(function(id) { completedModuleIds.add(id); });
+                }
+                showSlide(startIndex);
+                updateStats();
+            } else {
+                document.getElementById('slideContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--subtle)">В лекции нет модулей</div>';
+            }
+        } catch (error) {
+            document.getElementById('slideContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--subtle)">Ошибка загрузки: ' + error.message + '</div>';
+        }
+    }
+
+    function renderSlidesList() {
+        const container = document.getElementById('slidesList');
+        document.getElementById('slideCountBadge').textContent = slides.length;
+        document.getElementById('totalSlides').textContent = slides.length;
+        if (!slides.length) { container.innerHTML = '<div class="empty-students">Нет слайдов</div>'; return; }
+        container.innerHTML = slides.map(function(slide, index) {
+            var dotCls = 'dot-' + (slide.type || 'text');
+            return '<div class="slide-item ' + (index === currentSlideIndex ? 'active' : '') + '" onclick="showSlide(' + index + ')">' +
+                '<div class="slide-item-title">' + (slide.title || 'Без названия') + '</div>' +
+                '<div class="slide-item-meta"><span class="type-dot ' + dotCls + '"></span>' + (index + 1) + ' · ' + (slide.type || 'модуль') + '</div>' +
+                '</div>';
+        }).join('');
+    }
+
+    function selectOpt(input) {
+        input.closest('.q-item-opts').querySelectorAll('label').forEach(function(l) {
+            l.style.borderColor = 'var(--border)'; l.style.background = 'var(--surface)';
+        });
+        input.parentElement.style.borderColor = 'var(--accent)';
+        input.parentElement.style.background = 'var(--accent-light)';
+    }
+
+    function renderContent(slide) {
+        var c = slide.content;
+        if (!c) return '<p style="color:var(--subtle);font-style:italic;">Содержание отсутствует</p>';
+        if (slide.type === 'text') {
+            var text = (typeof c === 'object' && c.text) ? c.text : (typeof c === 'string' ? c : JSON.stringify(c));
+            return '<div class="slide-content">' + formatText(text) + '</div>';
+        }
+        if (slide.type === 'poll' || slide.type === 'question') {
+            var html = '<div style="padding:8px 0">';
+            html += '<p style="font-weight:600;font-size:16px;margin:0 0 16px 0;font-family:Lora,serif">' + formatText(c.question || '') + '</p>';
+            var pollOpts = c.options || [];
+            (pollOpts).forEach(function(opt, i) {
+                html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;">' + (i+1) + '. ' + formatText(opt) + '</div>';
+            });
+            html += '<p style="font-size:12px;color:var(--muted);margin-top:12px;">Студенты голосуют сейчас</p></div>';
+            return html;
+        }
+        var questions = Array.isArray(c) ? c : (c && c.questions ? c.questions : null);
+        if (slide.type === 'test' && questions && questions.length > 0) {
+            var html = '';
+            questions.forEach(function(q, i) {
+                html += '<div style="background:var(--bg);border-radius:10px;padding:16px 18px;margin-bottom:12px;border:1px solid var(--border)">';
+                html += '<p style="font-weight:600;font-size:15px;margin:0 0 12px 0;font-family:Lora,serif;color:var(--text)">' + (i+1) + '. ' + formatText(q.question) + '</p>';
+                html += '<div class="q-item-opts">';
+                if (q.answers) {
+                    q.answers.forEach(function(a, ai) {
+                        html += '<label style="display:flex;align-items:flex-start;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;cursor:pointer;font-size:14px;transition:all .15s">';
+                        html += '<input type="radio" name="tq_' + i + '" value="' + ai + '" style="accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;margin-top:2px" onchange="selectOpt(this)">';
+                        html += '<span style="flex:1;min-width:0;overflow-wrap:anywhere">' + formatText(a) + '</span></label>';
+                    });
+                }
+                html += '</div></div>';
+            });
+            return html;
+        }
+        if (slide.type === 'graph3d' && c && c.mode) {
+            var gid = 'g3d-teacher-' + (slide.id || index);
+            return '<div id="' + gid + '" data-graph3d="' + (JSON.stringify(c).replace(/"/g,'&quot;')) + '" style="height:420px;border-radius:10px;overflow:hidden"></div>';
+        }
+        return '<pre style="font-size:12px;white-space:pre-wrap;color:var(--muted);background:var(--bg);padding:16px;border-radius:8px">' + JSON.stringify(c, null, 2) + '</pre>';
+    }
+
+    function renderGraph3D(containerId, cfg) {
+        if (!window.Plotly || !cfg) return;
+        var res = Math.min(cfg.res || 50, 80);
+        function pyToJs(e){return e.replace(/\*\*/g,'^').replace(/\bsin\b/g,'Math.sin').replace(/\bcos\b/g,'Math.cos').replace(/\btan\b/g,'Math.tan').replace(/\bsqrt\b/g,'Math.sqrt').replace(/\bexp\b/g,'Math.exp').replace(/\blog10\b/g,'Math.log10').replace(/\blog\b/g,'Math.log').replace(/\babs\b/g,'Math.abs').replace(/\bpi\b/g,'Math.PI').replace(/\be\b/g,'Math.E').replace(/\^/g,'**');}
+        function makeFn(e,v){return new Function(v[0],v[1]||'_','"use strict";return('+pyToJs(e)+');');}
+        function linspace(a,b,n){var arr=new Array(n),s=(b-a)/(n-1);for(var i=0;i<n;i++)arr[i]=a+i*s;return arr;}
+        var cs=[[0,'#dbeafe'],[0.3,'#93c5fd'],[0.55,'#3b82f6'],[0.78,'#1d4ed8'],[1,'#172554']];
+        var ax={showbackground:true,backgroundcolor:'rgba(241,245,249,0.6)',gridcolor:'#cbd5e1',showline:true,linecolor:'#374151',linewidth:2,zeroline:true,zerolinecolor:'#64748b',nticks:6,tickfont:{size:10,color:'#6b7280'},showspikes:false};
+        function surf3d(x,y,z){return {type:'surface',x:x,y:y,z:z,colorscale:cs,opacity:1,showscale:false,
+            lighting:{ambient:0.62,diffuse:0.9,specular:0.18,roughness:0.45,fresnel:0.15},lightposition:{x:100,y:200,z:300},
+            contours:{z:{show:true,usecolormap:true,width:2,project:{z:true}}}};}
+        var layout3d={paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'DM Sans,sans-serif',color:'#1a1d23'},margin:{l:0,r:0,t:10,b:0},showlegend:false,
+            scene:{xaxis:Object.assign({title:{text:'x',font:{size:11}}},ax),yaxis:Object.assign({title:{text:'y',font:{size:11}}},ax),zaxis:Object.assign({title:{text:'z',font:{size:11}}},ax),aspectmode:'cube',bgcolor:'#fff',camera:{eye:{x:1.6,y:1.6,z:1.2}}}};
+        var opts={responsive:true,displaylogo:false};
+        try {
+            if (cfg.mode === '2d') {
+                var xs=linspace(cfg.xMin,cfg.xMax,res*3),fn=makeFn(cfg.expr,['x','_']);
+                var ys=xs.map(function(x){try{var v=fn(x);return isFinite(v)?v:null;}catch(e){return null;}});
+                Plotly.react(containerId,[{type:'scatter',mode:'lines',x:xs,y:ys,line:{color:'#2563eb',width:2.5}}],
+                    {paper_bgcolor:'#fff',plot_bgcolor:'#f8fafc',font:{family:'DM Sans,sans-serif'},margin:{l:50,r:20,t:20,b:50},showlegend:false,
+                    xaxis:{gridcolor:'#e4e7ec',title:{text:'x'},tickfont:{size:10}},yaxis:{gridcolor:'#e4e7ec',title:{text:'y'},tickfont:{size:10}}},opts);
+            } else if (cfg.mode === 'surface') {
+                var xs=linspace(cfg.xMin,cfg.xMax,res),ys=linspace(cfg.yMin,cfg.yMax,res),fn=makeFn(cfg.expr,['x','y']);
+                var zs=ys.map(function(y){return xs.map(function(x){try{var v=fn(x,y);return isFinite(v)?v:null;}catch(e){return null;}});});
+                Plotly.react(containerId,[surf3d(xs,ys,zs)],layout3d,opts);
+            } else if (cfg.mode === 'param') {
+                var us=linspace(cfg.uMin,cfg.uMax,res),vs=linspace(cfg.vMin,cfg.vMax,res);
+                var fnX=makeFn(cfg.px,['u','v']),fnY=makeFn(cfg.py,['u','v']),fnZ=makeFn(cfg.pz,['u','v']);
+                var xs2=[],ys2=[],zs2=[];
+                vs.forEach(function(vv){var rx=[],ry=[],rz=[];us.forEach(function(u){try{rx.push(fnX(u,vv));ry.push(fnY(u,vv));rz.push(fnZ(u,vv));}catch(e){rx.push(null);ry.push(null);rz.push(null);}});xs2.push(rx);ys2.push(ry);zs2.push(rz);});
+                Plotly.react(containerId,[surf3d(xs2,ys2,zs2)],layout3d,opts);
+            }
+        } catch(e) { console.error('graph3d:', e); }
+    }
+
+    function showSlide(index, silent) {
+        if (index < 0 || index >= slides.length) return;
+        currentSlideIndex = index;
+        const slide = slides[index];
+
+        document.getElementById('slideTitle').textContent = slide.title || 'Без названия';
+        document.getElementById('slideContent').innerHTML = renderContent(slide);
+        document.getElementById('currentSlideNum').textContent = index + 1;
+
+        if (slide.type === 'graph3d') {
+            var gid = 'g3d-teacher-' + (slide.id || index);
+            var el = document.getElementById(gid);
+            if (el && el.dataset.graph3d) {
+                try { renderGraph3D(gid, JSON.parse(el.dataset.graph3d.replace(/&quot;/g,'"'))); } catch(e) {}
+            }
+        }
+
+        if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise();
+
+        document.querySelectorAll('.slide-item').forEach(function(item, i) {
+            item.classList.toggle('active', i === index);
+        });
+
+        document.getElementById('prevBtn').disabled = index === 0;
+        document.getElementById('nextBtn').disabled = index === slides.length - 1;
+
+        // Мобильная кнопка «Завершить лекцию» — только на последнем слайде
+        var endMobile = document.getElementById('endAreaMobile');
+        if (endMobile) endMobile.classList.toggle('show-end', index === slides.length - 1);
+
+        const isTestSlide = slide.type === 'test';
+        const isPollSlide = slide.type === 'poll' || slide.type === 'question';
+        const isModulePoll = slide.type === 'question';
+        const btn = document.getElementById('completeModuleBtn');
+        const resultsLink = document.getElementById('resultsLink');
+        const endPollBtn = document.getElementById('endPollBtn');
+        if (isTestSlide) {
+            btn.style.display = 'inline-flex';
+            btn.dataset.moduleId = slide.id;
+            endPollBtn.style.display = 'none';
+            if (completedModuleIds.has(slide.id)) {
+                btn.textContent = 'Завершён';
+                btn.disabled = true;
+                btn.className = 'btn btn-muted';
+                resultsLink.href = '/teacher/sessions/' + sessionId + '/results';
+                resultsLink.style.display = 'inline-flex';
+            } else {
+                btn.textContent = 'Завершить модуль';
+                btn.disabled = false;
+                btn.className = 'btn btn-amber';
+                resultsLink.style.display = 'none';
+            }
+        } else if (isPollSlide) {
+            btn.style.display = 'none';
+            resultsLink.style.display = 'none';
+            // Для module poll activePollId устанавливаем при переходе на слайд
+            if (isModulePoll) {
+                var modulePollId = 'module_' + slide.id;
+                var modulePollEnded = completedPollIds && completedPollIds.has(modulePollId);
+                if (!modulePollEnded) {
+                    activePollId = modulePollId;
+                    endPollBtn.style.display = 'inline-flex';
+                } else {
+                    endPollBtn.style.display = 'none';
+                }
+            } else {
+                endPollBtn.style.display = activePollId ? 'inline-flex' : 'none';
+            }
+        } else {
+            btn.style.display = 'none';
+            resultsLink.style.display = 'none';
+            endPollBtn.style.display = 'none';
+        }
+
+        if (!silent && isSynced && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'slide_changed', payload: { slide_index: index, session_id: sessionId, lecture_id: lectureId } }));
+        }
+        updateStats();
+    }
+
+    function prevSlide() { if (currentSlideIndex > 0) showSlide(currentSlideIndex - 1); }
+    function nextSlide() { if (currentSlideIndex < slides.length - 1) showSlide(currentSlideIndex + 1); }
+
+    function toggleSync() {
+        isSynced = !isSynced;
+        const badge = document.getElementById('syncStatus');
+        const btn = document.getElementById('syncBtn');
+        const label = document.getElementById('syncLabel');
+        if (isSynced) {
+            badge.className = 'sync-badge sync-on';
+            label.textContent = 'Синхронизация вкл';
+            btn.textContent = 'Выкл';
+        } else {
+            badge.className = 'sync-badge sync-off';
+            label.textContent = 'Синхронизация выкл';
+            btn.textContent = 'Вкл';
+        }
+        if (ws) ws.send(JSON.stringify({ type: 'sync_status', payload: { synced: isSynced, session_id: sessionId } }));
+    }
+
+    function copyLink() {
+        const input = document.getElementById('studentLink');
+        copyToClipboard(input.value, 'Ссылка');
+    }
+
+    function completeModule() {
+        const btn = document.getElementById('completeModuleBtn');
+        const moduleId = parseInt(btn.dataset.moduleId);
+        const slide = slides[currentSlideIndex];
+        vmConfirm({
+            title: 'Завершить модуль?',
+            message: 'Модуль "' + (slide.title || 'без названия') + '" будет завершён. Студенты увидят свои результаты.',
+            danger: false,
+            okText: 'Завершить',
+            onConfirm: async function() {
+                btn.disabled = true;
+                btn.textContent = 'Завершение...';
+                try {
+                    const resp = await fetch('/api/sessions/' + sessionId + '/modules/' + moduleId + '/complete', { method: 'POST', headers: authHeaders() });
+                    if (resp.ok) {
+                        completedModuleIds.add(moduleId);
+                        showSlide(currentSlideIndex);
+                    } else {
+                        btn.disabled = false; btn.textContent = 'Завершить модуль';
+                        showToast('Ошибка при завершении модуля', 'error');
+                    }
+                } catch(e) {
+                    btn.disabled = false; btn.textContent = 'Завершить модуль';
+                    showToast('Ошибка: ' + e.message, 'error');
+                }
+            }
+        });
+    }
+
+    function endLecture() {
+        vmConfirm({
+            title: 'Завершить лекцию?',
+            message: 'Лекция будет завершена для всех студентов. Это действие нельзя отменить.',
+            danger: false,
+            okText: 'Завершить',
+            onConfirm: function() {
+                localStorage.removeItem('vm_lecture_start_' + sessionId);
+                if (ws) ws.send(JSON.stringify({ type: 'lecture_end', payload: { message: 'Лекция завершена', session_id: sessionId } }));
+                fetch('/api/sessions/' + sessionId + '/end', { method: 'POST', headers: authHeaders() }).catch(function(){});
+                setTimeout(showEndSummary, 1500);
+            }
+        });
+    }
+
+    async function showEndSummary() {
+        const resp = await fetch('/api/sessions/' + sessionId + '/has_tests', { headers: authHeaders() });
+        const data = await resp.json();
+        const overlay = document.createElement('div');
+        overlay.className = 'end-overlay';
+        var btns = '<a href="/dashboard" class="btn btn-accent" style="padding:10px 24px">На главную</a>';
+        if (data.has_tests) {
+            btns += '<a href="/teacher/sessions/' + sessionId + '/results" target="_blank" class="btn btn-green" style="padding:10px 24px">Результаты</a>';
+        }
+        overlay.innerHTML = '<div class="end-card">' +
+            '<div class="end-icon"><svg width="28" height="28" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
+            '<div class="end-title">Лекция завершена</div>' +
+            '<div class="end-sub">Студентов присутствовало: ' + students.length + '</div>' +
+            '<div class="end-btns">' + btns + '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+    }
+
+    function updateStats() {
+        const count = students.length;
+        document.getElementById('studentsCount').textContent = count;
+        document.getElementById('studentCountBadge').textContent = count;
+
+        const diff = Math.floor((new Date() - startTime) / 1000);
+        const mm = Math.floor(diff / 60).toString().padStart(2, '0');
+        const ss = (diff % 60).toString().padStart(2, '0');
+        document.getElementById('currentTime').textContent = mm + ':' + ss;
+
+        if (slides.length > 0) {
+            const pct = Math.round(((currentSlideIndex + 1) / slides.length) * 100);
+            document.getElementById('progressStat').textContent = pct + '%';
+        }
+    }
+
+    // ── Опросник ──────────────────────────────────────────────
+    let activePollId = null;
+    const completedPollIds = new Set(); // poll_id завершённых опросов
+
+    function openPollModal() {
+        document.getElementById('pollQuestion').value = '';
+        document.getElementById('pollOptions').innerHTML = '';
+        document.getElementById('pollPosition').value = currentSlideIndex + 2; // следующий
+        addPollOption(); addPollOption(); // два варианта по умолчанию
+        document.getElementById('pollModal').style.display = 'flex';
+        setTimeout(function() { document.getElementById('pollQuestion').focus(); }, 50);
+    }
+
+    function closePollModal() {
+        document.getElementById('pollModal').style.display = 'none';
+    }
+
+    function addPollOption() {
+        var container = document.getElementById('pollOptions');
+        var idx = container.children.length;
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+        row.innerHTML = '<input type="text" placeholder="Вариант ' + (idx+1) + '" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;">' +
+            '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;">×</button>';
+        container.appendChild(row);
+    }
+
+    function submitPoll() {
+        var question = document.getElementById('pollQuestion').value.trim();
+        var options = Array.from(document.getElementById('pollOptions').querySelectorAll('input'))
+            .map(function(i) { return i.value.trim(); })
+            .filter(function(v) { return v !== ''; });
+        var position = parseInt(document.getElementById('pollPosition').value) || (currentSlideIndex + 2);
+
+        if (!question) { showToast('Введите вопрос', 'warning'); return; }
+        if (options.length < 2) { showToast('Добавьте минимум 2 варианта ответа', 'warning'); return; }
+        if (position < 1) position = 1;
+        if (position > slides.length + 1) position = slides.length + 1;
+
+        ws.send(JSON.stringify({ type: 'create_poll', payload: { question: question, options: options, position: position } }));
+        closePollModal();
+    }
+
+    function endPoll() {
+        if (!activePollId) return;
+        if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('Нет соединения с сервером, подождите секунду и попробуйте снова.', 'error'); return; }
+        vmConfirm({
+            title: 'Завершить опрос?',
+            message: 'Результаты будут показаны всем студентам.',
+            danger: false,
+            okText: 'Завершить',
+            onConfirm: function() {
+                ws.send(JSON.stringify({ type: 'end_poll', payload: { poll_id: activePollId } }));
+            }
+        });
+    }
+
+    function handlePollInserted(payload) {
+        var pollId = payload.poll_id;
+        // Module polls уже есть в массиве слайдов — не вставляем дубликат
+        if (payload.is_module) return;
+        var question = payload.question;
+        var options = payload.options;
+        var position = payload.position; // 1-based
+
+        slides = slides.filter(function(s) { return s.id !== pollId; });
+        var pollSlide = { id: pollId, type: 'poll', title: 'Опрос', content: { question: question, options: options } };
+
+        var insertIdx;
+        if (position < 1 || position > slides.length + 1) {
+            slides.push(pollSlide);
+            insertIdx = slides.length - 1;
+        } else {
+            insertIdx = position - 1;
+            slides.splice(insertIdx, 0, pollSlide);
+        }
+
+        // Если опрос вставлен до текущего слайда — сдвигаем индекс
+        if (insertIdx <= currentSlideIndex) {
+            currentSlideIndex++;
+        }
+
+        activePollId = pollId;
+        renderSlidesList();
+        document.getElementById('endPollBtn').style.display = 'inline-flex';
+        document.getElementById('addPollBtn').style.display = 'none';
+
+        // Восстанавливаем позицию если сохранённый индекс теперь попадает в диапазон
+        if (pendingRestoreIndex !== null && pendingRestoreIndex < slides.length) {
+            showSlide(pendingRestoreIndex, true); // тихо, без slide_changed студентам
+            pendingRestoreIndex = null;
+        }
+    }
+
+    function showPollResults(payload) {
+        document.getElementById('pollResultsQuestion').textContent = payload.question;
+        var barsHtml = '';
+        payload.options.forEach(function(opt, i) {
+            var pct = payload.percentages[i] || 0;
+            var votes = payload.votes[i] || 0;
+            barsHtml += '<div style="margin-bottom:14px;">' +
+                '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">' +
+                '<span>' + formatText(opt) + '</span>' +
+                '<span style="font-weight:600;">' + pct + '% <span style="color:var(--muted);font-weight:400;">(' + votes + ')</span></span>' +
+                '</div>' +
+                '<div style="background:#f0f2f5;border-radius:99px;height:10px;">' +
+                '<div style="background:var(--accent);border-radius:99px;height:10px;width:' + pct + '%;transition:width .5s;"></div>' +
+                '</div></div>';
+        });
+        barsHtml += '<div style="font-size:12px;color:var(--muted);margin-top:8px;">Всего голосов: ' + payload.total + '</div>';
+        document.getElementById('pollResultsBars').innerHTML = barsHtml;
+        document.getElementById('pollResultsModal').style.display = 'flex';
+
+        // Убираем кнопку завершения, разрешаем новый опрос
+        completedPollIds.add(payload.poll_id);
+        activePollId = null;
+        document.getElementById('endPollBtn').style.display = 'none';
+        document.getElementById('addPollBtn').style.display = 'inline-flex';
+        // Слайд опроса остаётся в списке до конца лекции
+    }
+
+    function restorePollResults(payload) {
+        // Тихое восстановление — модалка не показывается, только сбрасываем кнопки
+        completedPollIds.add(payload.poll_id);
+        if (activePollId === payload.poll_id) {
+            activePollId = null;
+            document.getElementById('endPollBtn').style.display = 'none';
+            document.getElementById('addPollBtn').style.display = 'inline-flex';
+        }
+    }
+
+    function closePollResults() {
+        document.getElementById('pollResultsModal').style.display = 'none';
+    }
+    // ────────────────────────────────────────────────────────────
+
+    let pingInterval = null;
+    let reconnectTimer = null;
+    let reconnectAttempts = 0;
+    let pongReceived = true;   // получали ли pong на прошлый ping (детект half-open)
+    let missedPongs = 0;
+
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host.replace(/^www\./, '');
+        const token = localStorage.getItem('token') || '';
+        ws = new WebSocket(protocol + '//' + host + '/ws/session/' + sessionId + '/teacher?token=' + encodeURIComponent(token));
+        ws.onopen = function() {
+            reconnectAttempts = 0;   // успешное соединение — сбрасываем backoff
+            pongReceived = true;
+            missedPongs = 0;
+            ws.send(JSON.stringify({ type: 'session_info', payload: { session_id: sessionId, lecture_id: lectureId, is_teacher: true } }));
+            // Регистрируем question-модули как опросы
+            slides.forEach(function(slide) {
+                if (slide.type === 'question' && slide.content && slide.content.question && slide.content.options) {
+                    ws.send(JSON.stringify({
+                        type: 'init_module_poll',
+                        payload: { poll_id: 'module_' + slide.id, question: slide.content.question, options: slide.content.options }
+                    }));
+                }
+            });
+            if (pingInterval) clearInterval(pingInterval);
+            // Пинг каждые 30 сек: nginx не закроет по таймауту + ловим half-open
+            pingInterval = setInterval(function() {
+                if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                // Прошлый ping остался без pong — соединение «висит»
+                if (!pongReceived) {
+                    missedPongs++;
+                    if (missedPongs >= 2) {
+                        try { ws.close(); } catch (e) {}  // спровоцирует onclose → reconnect
+                        return;
+                    }
+                }
+                pongReceived = false;
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }, 30000);
+        };
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'pong') { pongReceived = true; missedPongs = 0; return; }
+                if (data.type === 'student_connected') addStudent(data.payload);
+                else if (data.type === 'student_disconnected') removeStudent(data.payload);
+                else if (data.type === 'poll_inserted') handlePollInserted(data.payload);
+                else if (data.type === 'poll_results') { if (!data.payload.is_restore) showPollResults(data.payload); else restorePollResults(data.payload); }
+            } catch(e) {}
+        };
+        ws.onclose = function() {
+            clearInterval(pingInterval);
+            pingInterval = null;
+            // Экспоненциальный backoff с джиттером: 1,2,4,8,15,15… секунд + до 1с разброса
+            const base = Math.min(15000, 1000 * Math.pow(2, reconnectAttempts));
+            const delay = base + Math.random() * 1000;
+            reconnectAttempts++;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectWebSocket, delay);
+        };
+    }
+
+    function addStudent(student) {
+        if (!students.find(function(s) { return s.id === student.id; })) {
+            students.push(student);
+            updateStudentsList();
+            updateStats();
+        }
+    }
+
+    function removeStudent(student) {
+        students = students.filter(function(s) { return s.id !== student.id; });
+        updateStudentsList();
+        updateStats();
+    }
+
+    function updateStudentsList() {
+        const container = document.getElementById('studentsList');
+        if (!students.length) {
+            container.innerHTML = '<div class="empty-students">Нет подключённых студентов</div>';
+            return;
+        }
+        container.innerHTML = students.map(function(s) {
+            var initial = (s.name || 'С').charAt(0).toUpperCase();
+            return '<div class="student-card">' +
+                '<div class="student-avatar">' + initial + '</div>' +
+                '<div><div class="student-name">' + (s.name || 'Студент') + '</div>' +
+                (s.group ? '<div class="student-group">' + s.group + '</div>' : '') +
+                '</div></div>';
+        }).join('');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        var tag = document.activeElement && document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'ArrowRight') nextSlide();
+        if (e.key === ' ') { e.preventDefault(); toggleSync(); }
+        if (e.key === 'Escape') endLecture();
+    });
+
+    setInterval(updateStats, 1000);
+
+    window.addEventListener('DOMContentLoaded', function() {
+        const baseUrl = window.location.protocol + '//' + window.location.host;
+        document.getElementById('studentLink').value = baseUrl + '/student/lecture/slides/' + lectureId + '?session=' + sessionId;
+        loadLecture().then(function() {
+            connectWebSocket();
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Отменяем устаревшие запуски на той же ветке/PR, чтобы не жечь раннеры впустую
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Vet & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go vet
+        run: go vet ./...
+
+      # CGO выключен: проект на modernc.org/sqlite (чистый Go), сборка/тесты
+      # должны проходить без системного компилятора — так же, как в проде.
+      - name: go test
+        run: go test ./...
+        env:
+          CGO_ENABLED: "0"
+
+  build:
+    name: Build linux binary
+    runs-on: ubuntu-latest
+    # Бинарник нужен только для влитого в main кода — на PR гоняем лишь тесты
+    if: github.event_name == 'push'
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build (no CGO, linux/amd64)
+        run: go build -trimpath -ldflags="-s -w" -o visualmath ./cmd/server
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: visualmath-linux-amd64
+          path: visualmath
+          retention-days: 14

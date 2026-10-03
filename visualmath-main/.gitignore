@@ -1,0 +1,22 @@
+# Откройте .gitignore и убедитесь, что там есть:
+echo "# Go" > .gitignore
+echo "*.exe" >> .gitignore
+echo "*.exe~" >> .gitignore
+echo "*.test" >> .gitignore
+echo "*.out" >> .gitignore
+echo "" >> .gitignore
+echo "# IDE" >> .gitignore
+echo ".vscode/" >> .gitignore
+echo "*.swp" >> .gitignore
+echo "" >> .gitignore
+echo "# Environment" >> .gitignore
+echo ".env" >> .gitignore
+echo ".env.local" >> .gitignore
+echo "" >> .gitignore
+echo "# Database" >> .gitignore
+echo "*.db" >> .gitignore
+echo "*.sqlite" >> .gitignore
+echo "" >> .gitignore
+echo "# Binaries" >> .gitignore
+echo "bin/" >> .gitignore
+echo "dist/" >> .gitignore

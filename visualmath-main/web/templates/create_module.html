@@ -1,0 +1,158 @@
+<script>
+    // Логика переключения типов
+    let selectedType = '';
+
+    function selectModuleType(type) {
+        selectedType = type;
+        document.getElementById('moduleType').value = type;
+        
+        // Визуальное выделение
+        document.querySelectorAll('.type-option').forEach(opt => opt.classList.remove('selected'));
+        document.querySelector('[data-type="' + type + '"]').classList.add('selected');
+        
+        updateContentArea(type);
+    }
+
+    function updateContentArea(type) {
+        const contentArea = document.getElementById('contentArea');
+        contentArea.innerHTML = ''; // Очистка
+
+        if (type === 'text') {
+            contentArea.innerHTML = `
+                <div class="form-group">
+                    <label>Текст лекции *</label>
+                    <textarea id="contentText" name="content" rows="10" class="form-control" placeholder="Введите текст..."></textarea>
+                    <div class="latex-hint">Подсказка: используйте $...$ для формул</div>
+                </div>`;
+        } else if (type === 'question') {
+            contentArea.innerHTML = `
+                <div id="questionsContainer"></div>
+                <button type="button" class="add-q-btn" onclick="addQuestion()">+ Добавить вопрос</button>
+            `;
+            addQuestion(); // Добавляем первый вопрос сразу
+        }
+    }
+
+    // Добавление визуального блока вопроса
+    function addQuestion() {
+        const container = document.getElementById('questionsContainer');
+        const qIndex = container.children.length; // Уникальный индекс для группировки radio
+
+        const div = document.createElement('div');
+        div.className = 'question-block';
+        div.style.border = "1px solid #ccc";
+        div.style.padding = "15px";
+        div.style.marginBottom = "15px";
+        div.style.borderRadius = "8px";
+        div.style.backgroundColor = "#f9f9f9";
+
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <strong>Вопрос №${qIndex + 1}</strong>
+                <button type="button" class="remove-q-btn" style="background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="this.parentElement.parentElement.remove()">Удалить</button>
+            </div>
+            
+            <div class="form-group">
+                <input type="text" class="q-text" style="width:100%; padding:8px;" placeholder="Введите текст вопроса" required>
+            </div>
+
+            <label>Варианты ответов (отметьте правильный кружком):</label>
+            ${[0, 1, 2, 3].map(i => `
+                <div class="answer-row" style="display:flex; gap:10px; margin-top:5px; align-items:center;">
+                    <input type="radio" name="correct_answer_${qIndex}" value="${i}" ${i === 0 ? 'checked' : ''} style="transform:scale(1.5);">
+                    <input type="text" class="a-text" style="flex-grow:1; padding:5px;" placeholder="Ответ ${i + 1}" required>
+                </div>
+            `).join('')}
+        `;
+        container.appendChild(div);
+    }
+
+    // Обработка отправки формы
+    document.getElementById('createModuleForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // Останавливаем стандартную отправку
+
+        const title = document.getElementById('moduleTitle').value;
+        const courseId = parseInt(document.getElementById('moduleCourse').value);
+        const description = document.getElementById('moduleDescription').value;
+        
+        let contentData = null;
+
+        // СБОР ДАННЫХ ДЛЯ ТЕСТА
+        if (selectedType === 'question') {
+            const qBlocks = document.querySelectorAll('.question-block');
+            const questions = [];
+
+            qBlocks.forEach((block, index) => {
+                const qText = block.querySelector('.q-text').value;
+                const aInputs = block.querySelectorAll('.a-text');
+                const answers = [];
+                aInputs.forEach(inp => answers.push(inp.value));
+
+                
+                const radio = block.querySelector('input[type="radio"]:checked');
+                const correctIndex = radio ? parseInt(radio.value) : 0;
+
+                if (qText) {
+                    questions.push({
+                        question: qText,
+                        answers: answers,
+                        correct: correctIndex // Это число (0, 1, 2 или 3)
+                    });
+                }
+            });
+
+            if (questions.length === 0) {
+                alert("Добавьте хотя бы один вопрос!");
+                return;
+            }
+            contentData = questions; // Это массив объектов, который Go превратит в JSON
+        } 
+        // СБОР ДАННЫХ ДЛЯ ТЕКСТА
+        else if (selectedType === 'text') {
+            contentData = {
+                text: document.getElementById('contentText').value,
+                images: []
+            };
+        } else {
+            alert("Выберите тип модуля");
+            return;
+        }
+
+        // Формируем итоговый объект
+        const formData = {
+            title: title,
+            course_id: courseId,
+            description: description,
+            type: selectedType,
+            content: contentData // Здесь будет JSON структура
+        };
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/modules', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert("Модуль успешно создан!");
+                window.location.href = '/modules';
+            } else {
+                alert("Ошибка: " + (result.message || "Не удалось создать"));
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Ошибка сети");
+        }
+    });
+
+    // Инициализация
+    window.addEventListener('DOMContentLoaded', () => {
+        selectModuleType('text'); // По умолчанию текст
+    });
+</script>

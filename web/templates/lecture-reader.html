@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Лекция — VisualMath</title>
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--border:#e4e7ec;--text:#1a1d23;--muted:#6b7280;--accent:#2563eb;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:200;}
+.topbar-logo{font-family:'Lora',serif;font-weight:600;font-size:18px;color:var(--text);text-decoration:none;}
+.topbar-back{font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px;}
+.topbar-back:hover{color:var(--text);}
+.topbar-title{flex:1;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-counter{font-size:13px;color:var(--muted);flex-shrink:0;}
+
+.layout{display:flex;height:calc(100vh - 56px);}
+
+/* Slide area */
+.slide-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.slide-content{flex:1;overflow-y:auto;padding:36px 48px;}
+.slide-number{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;}
+.slide-title{font-family:'Lora',serif;font-size:22px;font-weight:600;margin-bottom:20px;}
+.slide-body{font-size:15px;line-height:1.7;color:var(--text);}
+.slide-body img{max-width:100%;border-radius:8px;margin:12px 0;}
+
+/* Question module */
+.question-block{margin-bottom:20px;padding:18px;background:var(--bg);border-radius:10px;}
+.question-text{font-size:15px;font-weight:500;margin-bottom:14px;}
+.answer-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:8px;transition:border .15s,background .15s;background:var(--surface);}
+.answer-opt:hover{border-color:var(--accent);background:#eff6ff;}
+.answer-opt.selected{border-color:var(--accent);background:#eff6ff;}
+.answer-opt.correct{border-color:#16a34a;background:#f0fdf4;}
+.answer-opt.wrong{border-color:#dc2626;background:#fef2f2;}
+.answer-letter{font-weight:700;font-size:13px;color:var(--muted);min-width:18px;flex-shrink:0;}
+/* min-width:0 обязателен: flex-элемент иначе не сжимается ниже ширины формулы
+   и вариант ответа вылезает за карточку. overflow-x:auto — широкая инлайн-
+   формула прокручивается внутри варианта, а не обрезается. */
+.answer-text{font-size:14px;flex:1;min-width:0;overflow-x:auto;overflow-wrap:anywhere;}
+.answer-text mjx-container{max-width:100%;}
+.check-btn{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;}
+.check-btn:disabled{opacity:.5;cursor:default;}
+
+/* Nav bar */
+.nav-bar{height:64px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;padding:0 32px;flex-shrink:0;}
+.nav-btn{padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--text);display:flex;align-items:center;gap:6px;transition:border .15s;}
+.nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.nav-btn:disabled{opacity:.35;cursor:default;}
+.nav-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.nav-btn.primary:hover{background:var(--accent-hover,#1d4ed8);border-color:var(--accent-hover,#1d4ed8);}
+.progress-dots{display:flex;gap:6px;flex-wrap:wrap;max-width:300px;}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .2s;}
+.dot.done{background:#86efac;}
+.dot.active{background:var(--accent);}
+
+/* Comments panel */
+.comments-toggle{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:100;}
+.comments-fab{width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(37,99,235,.3);font-size:20px;transition:background .15s;}
+.comments-fab:hover{background:#1d4ed8;}
+.comments-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;}
+
+.comments-panel{position:fixed;right:0;top:56px;width:340px;height:calc(100vh - 56px);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:150;transform:translateX(100%);transition:transform .25s ease;}
+.comments-panel.open{transform:translateX(0);}
+.cp-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.cp-header h3{font-size:15px;font-weight:700;}
+.cp-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;padding:4px;}
+.cp-list{flex:1;overflow-y:auto;padding:16px;}
+.comment-item{margin-bottom:16px;padding:12px;background:var(--bg);border-radius:10px;}
+.ci-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.ci-avatar{width:28px;height:28px;border-radius:50%;background:var(--border);object-fit:cover;flex-shrink:0;}
+.ci-avatar-placeholder{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.ci-name{font-size:13px;font-weight:600;}
+.ci-name a{color:inherit;text-decoration:none;}
+.ci-name a:hover{color:var(--accent);text-decoration:underline;}
+.ci-date{font-size:11px;color:var(--muted);margin-left:auto;}
+.ci-text{font-size:13px;line-height:1.55;color:var(--text);}
+.ci-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#16a34a;background:#dcfce7;border-radius:20px;padding:2px 7px;}
+html[data-theme="dark"] .ci-badge{background:#14532d;color:#bbf7d0;}
+.comment-item.is-teacher{background:rgba(22,163,74,.09);border:1px solid rgba(22,163,74,.35);}
+.ci-text a{color:var(--accent);text-decoration:none;font-weight:600;}
+.ci-text a:hover{text-decoration:underline;}
+.no-comments{text-align:center;padding:40px 16px;color:var(--muted);font-size:14px;}
+.cp-form{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0;}
+.cp-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:none;height:72px;outline:none;transition:border .15s;}
+.cp-textarea:focus{border-color:var(--accent);}
+.cp-send{width:100%;margin-top:8px;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+.cp-send:hover{background:#1d4ed8;}
+.cp-hint{font-size:11px;color:var(--muted);margin-top:5px;}
+
+.loading{text-align:center;padding:80px;color:var(--muted);}
+
+/* Этот шаблон НЕ подключает mobile-nav.js — все мобильные правила локальные. */
+@media (max-width:700px){
+  html,body{overflow-x:hidden;}
+  .topbar{padding:0 14px;gap:10px;}
+  .topbar-back{font-size:0;}              /* icon-only: текст «Лекции» схлопываем */
+  .topbar-back svg{width:18px;height:18px;}
+  .topbar-title{font-size:14px;}
+  .slide-content{padding:20px 16px;}
+  .slide-title{font-size:19px;}
+  .nav-bar{padding:0 12px;}
+  .nav-btn{padding:9px 12px;font-size:13px;}
+  .progress-dots{max-width:130px;}
+  .comments-panel{width:100%;}            /* drawer комментариев на всю ширину */
+  .comments-toggle{right:14px;}
+  /* Display-формулы ($$…$$) прокручиваются внутри блока, а не вылезают. */
+  .slide-body mjx-container[display="true"]{display:block;overflow-x:auto;overflow-y:hidden;max-width:100%;}
+  .slide-body{overflow-wrap:anywhere;}
+}
+</style>
+<script>window.MathJax={loader:{load:['[tex]/boldsymbol']},tex:{packages:{'[+]':['boldsymbol']},inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script src="/static/vendor/mathjax/es5/tex-mml-chtml.js" async id="MathJax-script"></script>
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/format-text.js"></script>
+<script src="/static/js/toast.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <a href="/lectures/published" class="topbar-back">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Лекции
+  </a>
+  <div class="topbar-title" id="topbarTitle">Загрузка...</div>
+  <div class="topbar-counter" id="topbarCounter"></div>
+</div>
+
+<div id="loadingState" class="loading">Загрузка...</div>
+
+<div class="layout" id="mainLayout" style="display:none">
+  <div class="slide-area">
+    <div class="slide-content" id="slideContent"></div>
+    <div class="nav-bar">
+      <button class="nav-btn" id="btnPrev" onclick="prevSlide()" disabled>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Назад
+      </button>
+      <div class="progress-dots" id="progressDots"></div>
+      <button class="nav-btn primary" id="btnNext" onclick="nextSlide()">
+        Далее
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Comments FAB -->
+<div class="comments-toggle" id="commentsFab" style="display:none">
+  <button class="comments-fab" onclick="toggleComments()" title="Комментарии">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span class="comments-badge" id="commentsBadge" style="display:none">0</span>
+  </button>
+</div>
+
+<!-- Comments panel -->
+<div class="comments-panel" id="commentsPanel">
+  <div class="cp-header">
+    <h3>Комментарии</h3>
+    <button class="cp-close" onclick="toggleComments()">×</button>
+  </div>
+  <div class="cp-list" id="commentsList"><div class="no-comments">Загрузка...</div></div>
+  <div class="cp-form">
+    <textarea class="cp-textarea" id="commentText" placeholder="Напишите комментарий... Используйте #1 для ссылки на слайд"></textarea>
+    <button class="cp-send" onclick="postComment()">Отправить</button>
+    <div class="cp-hint">Тег #N переводит читателя на слайд N</div>
+  </div>
+</div>
+
+<script>
+const lectureId = '{{.LectureID}}';
+
+// Аутентификация XHR через Bearer-токен из localStorage — как во всём
+// приложении. Раньше ридер полагался ТОЛЬКО на cookie: когда JWT-cookie
+// (24ч) протухала, а localStorage-токен ещё жив, чтение лекций ломалось
+// («Лекция не найдена»), хотя остальные страницы работали. Cookie остаётся
+// fallback'ом (браузер шлёт её сам).
+const token = localStorage.getItem('token');
+function authHeaders() {
+    return token ? { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+                 : { 'Content-Type': 'application/json' };
+}
+let modules = [];
+let currentIdx = 0;
+let selectedAnswers = {};
+let checkedQuestions = {};
+let commentsOpen = false;
+
+async function init() {
+    try {
+        const resp = await fetch('/api/lectures/' + lectureId, { headers: authHeaders() });
+        if (!resp.ok) throw new Error('Лекция не найдена');
+        const lecture = await resp.json();
+
+        document.title = (lecture.title || 'Лекция') + ' — VisualMath';
+        document.getElementById('topbarTitle').textContent = lecture.title || '';
+
+        // если hide_tests — убираем тестовые модули
+        modules = (lecture.modules || []).filter(m =>
+            !(lecture.hide_tests && (m.type === 'test' || m.type === 'question'))
+        );
+
+        if (modules.length === 0) {
+            document.getElementById('loadingState').textContent = 'В этой лекции нет контента';
+            return;
+        }
+
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('mainLayout').style.display = 'flex';
+        document.getElementById('commentsFab').style.display = 'block';
+
+        buildDots();
+        goTo(0);
+        loadComments();
+    } catch(e) {
+        document.getElementById('loadingState').textContent = 'Ошибка: ' + e.message;
+    }
+}
+
+function buildDots() {
+    const container = document.getElementById('progressDots');
+    container.innerHTML = modules.map((_,i) =>
+        `<div class="dot" id="dot${i}"></div>`
+    ).join('');
+}
+
+function updateCounter() {
+    document.getElementById('topbarCounter').textContent = (currentIdx+1) + ' / ' + modules.length;
+}
+
+function goTo(idx) {
+    if (idx < 0 || idx >= modules.length) return;
+    currentIdx = idx;
+    renderSlide(modules[idx], idx);
+    updateCounter();
+
+    document.querySelectorAll('.dot').forEach((d,i) => {
+        d.className = 'dot' + (i < idx ? ' done' : i === idx ? ' active' : '');
+    });
+
+    document.getElementById('btnPrev').disabled = idx === 0;
+    const btnNext = document.getElementById('btnNext');
+    if (idx === modules.length - 1) {
+        btnNext.innerHTML = 'Завершить <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>';
+        btnNext.onclick = () => { window.location.href = '/lectures/published'; };
+    } else {
+        btnNext.innerHTML = 'Далее <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        btnNext.onclick = nextSlide;
+    }
+
+    if (window.MathJax) MathJax.typesetPromise().catch(()=>{});
+}
+
+function prevSlide() { goTo(currentIdx - 1); }
+function nextSlide() { goTo(currentIdx + 1); }
+
+function renderSlide(mod, idx) {
+    const container = document.getElementById('slideContent');
+    const slideNum = idx + 1;
+    let html = `<div class="slide-number">Слайд ${slideNum}</div>
+                <div class="slide-title">${esc(mod.title)}</div>`;
+
+    if (mod.type === 'text') {
+        const text = typeof mod.content === 'object' ? (mod.content.text || '') : (mod.content || '');
+        html += `<div class="slide-body">${formatText(text)}</div>`;
+    } else if (mod.type === 'question' || mod.type === 'test') {
+        const questions = Array.isArray(mod.content) ? mod.content : [];
+        questions.forEach((q, qi) => {
+            const qKey = idx + '_' + qi;
+            const letters = 'абвгдеёж';
+            const answers = q.answers || [];
+            const checked = checkedQuestions[qKey];
+            const correct = normalizeCorrect(q.correct);
+
+            html += `<div class="question-block">
+                <div class="question-text">${formatText(q.question || '')}</div>`;
+
+            answers.forEach((ans, ai) => {
+                let cls = 'answer-opt';
+                if (selectedAnswers[qKey] !== undefined && selectedAnswers[qKey].includes(ai)) cls += ' selected';
+                if (checked) {
+                    if (correct.includes(ai)) cls += ' correct';
+                    else if (selectedAnswers[qKey] && selectedAnswers[qKey].includes(ai)) cls += ' wrong';
+                }
+                html += `<div class="${cls}" onclick="toggleAnswer('${qKey}',${ai})">
+                    <span class="answer-letter">${letters[ai] || ai})</span>
+                    <span class="answer-text">${formatText(ans)}</span>
+                </div>`;
+            });
+
+            if (!checked) {
+                html += `<button class="check-btn" onclick="checkAnswers('${qKey}')">Проверить</button>`;
+            }
+            html += '</div>';
+        });
+    }
+
+    container.innerHTML = html;
+}
+
+function normalizeCorrect(c) {
+    if (Array.isArray(c)) return c.map(Number);
+    if (typeof c === 'number') return [c];
+    if (typeof c === 'string') return c.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    return [];
+}
+
+function toggleAnswer(qKey, ai) {
+    if (checkedQuestions[qKey]) return;
+    if (!selectedAnswers[qKey]) selectedAnswers[qKey] = [];
+    const idx2 = selectedAnswers[qKey].indexOf(ai);
+    if (idx2 >= 0) selectedAnswers[qKey].splice(idx2, 1);
+    else selectedAnswers[qKey].push(ai);
+    renderSlide(modules[currentIdx], currentIdx);
+    if (window.MathJax) MathJax.typesetPromise().catch(()=>{});
+}
+
+function checkAnswers(qKey) {
+    checkedQuestions[qKey] = true;
+    renderSlide(modules[currentIdx], currentIdx);
+    if (window.MathJax) MathJax.typesetPromise().catch(()=>{});
+}
+
+// Comments
+async function loadComments() {
+    try {
+        const resp = await fetch('/api/lectures/' + lectureId + '/comments', { headers: authHeaders() });
+        if (!resp.ok) {
+            console.error('Comments API error:', resp.status);
+            document.getElementById('commentsList').innerHTML = '<div class="no-comments">Ошибка загрузки (' + resp.status + ')</div>';
+            return;
+        }
+        const data = await resp.json();
+        const comments = Array.isArray(data) ? data : (data.comments || []);
+        renderComments(comments);
+    } catch(e) {
+        console.error('loadComments error:', e);
+        document.getElementById('commentsList').innerHTML = '<div class="no-comments">Ошибка загрузки</div>';
+    }
+}
+
+function renderComments(comments) {
+    const list = document.getElementById('commentsList');
+    const badge = document.getElementById('commentsBadge');
+    if (!comments || comments.length === 0) {
+        list.innerHTML = '<div class="no-comments">Комментариев пока нет. Будьте первым!</div>';
+        badge.style.display = 'none';
+        return;
+    }
+    badge.textContent = comments.length;
+    badge.style.display = 'block';
+    list.innerHTML = comments.map(c => {
+        const textHtml = formatCommentText(esc(c.text));
+        const avatarHtml = c.avatar_url
+            ? `<img class="ci-avatar" src="${esc(c.avatar_url)}" alt="">`
+            : `<div class="ci-avatar-placeholder">${esc(c.user_name||'?').charAt(0).toUpperCase()}</div>`;
+        const isTeacher = c.user_type === 'teacher' || c.user_type === 'admin';
+        const badgeHtml = isTeacher ? `<span class="ci-badge">Преподаватель</span>` : '';
+        return `<div class="comment-item${isTeacher ? ' is-teacher' : ''}">
+            <div class="ci-top">
+                ${avatarHtml}
+                <span class="ci-name"><a href="/profile/${c.user_id}">${esc(c.user_name||'')}</a></span>
+                ${badgeHtml}
+                <span class="ci-date">${esc(c.created_at||'')}</span>
+            </div>
+            <div class="ci-text">${textHtml}</div>
+        </div>`;
+    }).join('');
+}
+
+function formatCommentText(html) {
+    // #N → кликабельная ссылка на слайд
+    return html.replace(/#(\d+)/g, function(match, n) {
+        return `<a href="#" onclick="goTo(${parseInt(n)-1});return false;">#${n}</a>`;
+    });
+}
+
+async function postComment() {
+    const ta = document.getElementById('commentText');
+    const text = ta.value.trim();
+    if (!text) return;
+    try {
+        const resp = await fetch('/api/lectures/' + lectureId + '/comments', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({text})
+        });
+        if (resp.ok) {
+            ta.value = '';
+            await loadComments();
+        } else if (resp.status === 401) {
+            showToast('Войдите в систему, чтобы оставить комментарий', 'warning');
+        }
+    } catch(e) {}
+}
+
+function toggleComments() {
+    commentsOpen = !commentsOpen;
+    document.getElementById('commentsPanel').classList.toggle('open', commentsOpen);
+}
+
+function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

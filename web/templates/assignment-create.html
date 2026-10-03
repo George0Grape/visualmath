@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Создать задание — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--border:#e4e7ec;--text:#1a1d23;--muted:#6b7280;--accent:#2563eb;--accent-hover:#1d4ed8;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:'Lora',serif;font-weight:600;font-size:18px;color:var(--text);text-decoration:none;}
+.topbar-back{font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px;}
+.topbar-back:hover{color:var(--text);}
+
+.shell{display:flex;min-height:calc(100vh - 56px);}
+
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;}
+.sb-section{margin-bottom:4px;}
+.sb-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 20px 4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:8px 20px;font-size:14px;color:var(--text);text-decoration:none;transition:background .15s;}
+.sb-link:hover{background:var(--bg);color:var(--accent);}
+.sb-link svg{flex-shrink:0;}
+
+.main{flex:1;padding:32px;display:flex;justify-content:center;}
+
+.form-wrap{width:100%;max-width:640px;}
+.page-heading{font-family:'Lora',serif;font-size:24px;font-weight:600;margin-bottom:24px;}
+
+.card{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:28px;}
+
+.field{margin-bottom:20px;}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.field .hint{font-size:12px;color:var(--muted);margin-top:4px;}
+input[type=text],input[type=datetime-local],input[type=number],textarea{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--surface);transition:border .15s;outline:none;}
+input[type=text]:focus,input[type=datetime-local]:focus,input[type=number]:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+textarea{resize:vertical;min-height:90px;}
+
+.file-area{border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;transition:border .15s,background .15s;}
+.file-area:hover{border-color:var(--accent);background:#f8faff;}
+.file-label-inner{display:flex;align-items:center;gap:10px;padding:14px 16px;color:var(--muted);font-size:14px;}
+input[type=file]{display:none;}
+#fileName{font-size:12px;color:#16a34a;padding:0 16px 10px;}
+
+.actions{display:flex;gap:12px;margin-top:8px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .15s;}
+.btn:hover{opacity:.9;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-back{background:var(--bg);color:var(--text);border:1.5px solid var(--border);}
+</style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <a href="/dashboard" class="topbar-logo">VisualMath</a>
+  <a href="/classroom/subjects/{{.SubjectID}}" class="topbar-back">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Назад к предмету
+  </a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Общее</div>
+      <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Контент</div>
+      <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Библиотека модулей
+      </a>
+      <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Мои лекции
+      </a>
+      <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+        Начать лекцию
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Classroom</div>
+      <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Мои предметы
+      </a>
+      <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Создать предмет
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Создание</div>
+      <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+      </a>
+      <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать лекцию
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="form-wrap">
+      <div class="page-heading">{{if .IsEdit}}Редактировать задание{{else}}Новое задание{{end}}</div>
+      <div class="card">
+        <form method="POST" action="{{if .IsEdit}}/classroom/assignments/{{.Assignment.ID}}/edit{{else}}/classroom/subjects/{{.SubjectID}}/assignments/create{{end}}" enctype="multipart/form-data">
+          <div class="field">
+            <label for="title">Название <span style="color:var(--accent)">*</span></label>
+            <input type="text" id="title" name="title" placeholder="Название задания" required value="{{if .IsEdit}}{{.Assignment.Title}}{{end}}">
+          </div>
+          <div class="field">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" placeholder="Описание задания, требования к выполнению...">{{if .IsEdit}}{{.Assignment.Description}}{{end}}</textarea>
+          </div>
+          <div class="field">
+            <label>Режим оценивания</label>
+            <div style="display:flex;gap:10px;margin-top:2px;">
+              <label style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border .15s;" id="modeTotal">
+                <input type="radio" name="grading_mode" value="total" checked onchange="setMode('total')" style="accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">За всю работу</div>
+                  <div style="font-size:11px;color:var(--muted);">Один общий балл</div>
+                </div>
+              </label>
+              <label style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border .15s;" id="modePerTask">
+                <input type="radio" name="grading_mode" value="per_task" onchange="setMode('per_task')" style="accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">По задачам</div>
+                  <div style="font-size:11px;color:var(--muted);">Баллы за каждую задачу</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="field" id="maxScoreField">
+            <label for="max_score">Максимальный балл</label>
+            <input type="number" id="max_score" name="max_score" value="100" min="1" max="1000">
+            <div class="hint">Студенты будут получать оценку из этого числа</div>
+          </div>
+
+          <div id="tasksBlock" style="display:none;margin-bottom:20px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Задачи и баллы</div>
+            <div id="taskList"></div>
+            <button type="button" onclick="addTask()" style="margin-top:8px;padding:8px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);">
+              + Добавить задачу
+            </button>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px;">Максимальный балл = сумма баллов за задачи</div>
+          </div>
+          <div class="field">
+            <label for="publish_at">Время выдачи студентам <span style="color:var(--muted);font-weight:400">(необязательно)</span></label>
+            <input type="datetime-local" id="publish_at" name="publish_at" value="{{if .IsEdit}}{{if .Assignment.PublishAt}}{{.Assignment.PublishAt.Format "2006-01-02T15:04"}}{{end}}{{end}}">
+            <div class="hint">Если указать — задание появится у студентов только в это время (удобно для контрольной). Пусто = сразу.</div>
+          </div>
+          <div class="field">
+            <label for="deadline">Дедлайн <span style="color:var(--muted);font-weight:400">(необязательно)</span></label>
+            <input type="datetime-local" id="deadline" name="deadline" value="{{if .IsEdit}}{{if .Assignment.Deadline}}{{.Assignment.Deadline.Format "2006-01-02T15:04"}}{{end}}{{end}}">
+          </div>
+          <div class="field" id="strictField">
+            <label>Тип дедлайна</label>
+            <input type="hidden" name="strict_deadline" id="strictVal" value="0">
+            <div style="display:flex;gap:10px;margin-top:2px;">
+              <label style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border .15s;" id="strictOff">
+                <input type="radio" name="_strict_ui" value="0" checked onchange="document.getElementById('strictVal').value='0';document.getElementById('strictOff').style.borderColor='var(--accent)';document.getElementById('strictOn').style.borderColor='var(--border)';" style="accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">Мягкий</div>
+                  <div style="font-size:11px;color:var(--muted);">Можно сдать после срока, будет пометка «опоздание»</div>
+                </div>
+              </label>
+              <label style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border .15s;" id="strictOn">
+                <input type="radio" name="_strict_ui" value="1" onchange="document.getElementById('strictVal').value='1';document.getElementById('strictOn').style.borderColor='var(--accent)';document.getElementById('strictOff').style.borderColor='var(--border)';" style="accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">Жёсткий</div>
+                  <div style="font-size:11px;color:var(--muted);">Сдача после дедлайна запрещена</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Файл условия <span style="color:var(--muted);font-weight:400">(PDF, необязательно)</span></label>
+            <div class="file-area" onclick="document.getElementById('condFile').click()">
+              <div class="file-label-inner">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                <span id="filePrompt">Выбрать файл условия...</span>
+              </div>
+              <div id="fileName"></div>
+            </div>
+            <input type="file" id="condFile" name="condition_file" accept=".pdf,.doc,.docx,.txt">
+            <div class="hint">Поддерживаются PDF, Word, текстовые файлы</div>
+          </div>
+
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="allowCommentsCheck" name="allow_comments" value="1"
+                {{if not .IsEdit}}checked{{else if .Assignment.AllowComments}}checked{{end}}
+                style="accent-color:var(--accent);width:16px;height:16px;">
+              <span>Разрешить личные вопросы студентов</span>
+            </label>
+            <div class="hint">Студенты смогут писать вам личные сообщения по заданию (видны только вам и студенту)</div>
+          </div>
+
+          {{if not .IsEdit}}{{/* блок вариантов только при создании */}}
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="variantCheck" name="variant_distribution" value="1" onchange="toggleVariants(this.checked)" style="accent-color:var(--accent);width:16px;height:16px;">
+              <span>Раздать разные варианты студентам</span>
+            </label>
+            <div class="hint">Каждый студент получит свой файл по кругу (1→2→3→1→...)</div>
+          </div>
+          <div id="variantBlock" style="display:none;" class="field">
+            <label>Файлы вариантов <span style="color:var(--accent)">*</span></label>
+            <div class="file-area" onclick="document.getElementById('variantFiles').click()">
+              <div class="file-label-inner">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                <span id="variantPrompt">Выбрать файлы вариантов...</span>
+              </div>
+              <div id="variantNames"></div>
+            </div>
+            <input type="file" id="variantFiles" name="variant_files[]" accept=".pdf" multiple>
+            <div class="hint">Только PDF. Студенты получат варианты по порядку записи в предмет.</div>
+          </div>
+          {{end}}
+          <div class="actions">
+            <button type="submit" class="btn btn-primary">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
+              {{if .IsEdit}}Сохранить изменения{{else}}Создать задание{{end}}
+            </button>
+            <a href="{{if .IsEdit}}/classroom/assignments/{{.Assignment.ID}}{{else}}/classroom/subjects/{{.SubjectID}}{{end}}" class="btn btn-back">Отмена</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('condFile').addEventListener('change', function() {
+    var f = this.files[0];
+    document.getElementById('filePrompt').textContent = f ? f.name : 'Выбрать файл условия...';
+    document.getElementById('fileName').textContent = f ? '✓ ' + f.name : '';
+    document.getElementById('fileName').style.color = f ? '#16a34a' : '';
+    document.getElementById('fileName').style.padding = f ? '0 16px 10px' : '';
+});
+
+function toggleVariants(on) {
+    document.getElementById('variantBlock').style.display = on ? '' : 'none';
+}
+
+var variantFilesEl = document.getElementById('variantFiles');
+if (variantFilesEl) {
+    variantFilesEl.addEventListener('change', function() {
+        var names = Array.from(this.files).map(function(f, i){ return (i+1) + '. ' + f.name; }).join('\n');
+        document.getElementById('variantPrompt').textContent = this.files.length ? this.files.length + ' файл(ов) выбрано' : 'Выбрать файлы вариантов...';
+        document.getElementById('variantNames').textContent = names;
+        document.getElementById('variantNames').style.padding = names ? '0 16px 10px' : '';
+        document.getElementById('variantNames').style.color = '#16a34a';
+        document.getElementById('variantNames').style.fontSize = '12px';
+        document.getElementById('variantNames').style.whiteSpace = 'pre-line';
+    });
+}
+
+// Проверка размера файлов — держим синхронно с RequestSize/nginx (80 МБ).
+// Ловим ДО отправки, чтобы вместо пустой 413-страницы показать понятный текст.
+var MAX_UPLOAD = 80 * 1024 * 1024;
+function fmtMB(b) { return (b / 1024 / 1024).toFixed(1); }
+function findTooBig(files) {
+    for (var i = 0; i < files.length; i++) {
+        if (files[i].size > MAX_UPLOAD) return files[i];
+    }
+    return null;
+}
+if (variantFilesEl) {
+    variantFilesEl.addEventListener('change', function() {
+        var big = findTooBig(this.files);
+        if (big) showToast('Файл «' + big.name + '» ' + fmtMB(big.size) + ' МБ больше лимита 80 МБ. Сожмите его и выберите снова.', 'error');
+    });
+}
+document.getElementById('condFile').addEventListener('change', function() {
+    if (this.files[0] && this.files[0].size > MAX_UPLOAD) {
+        showToast('Условие ' + fmtMB(this.files[0].size) + ' МБ больше лимита 80 МБ. Сожмите файл.', 'error');
+    }
+});
+document.querySelector('form').addEventListener('submit', function(e) {
+    var cond = document.getElementById('condFile').files[0];
+    if (cond && cond.size > MAX_UPLOAD) {
+        e.preventDefault();
+        showToast('Условие больше 80 МБ — сожмите файл и попробуйте снова.', 'error');
+        return;
+    }
+    if (variantFilesEl) {
+        var big = findTooBig(variantFilesEl.files);
+        if (big) {
+            e.preventDefault();
+            showToast('Вариант «' + big.name + '» больше 80 МБ — сожмите файл и попробуйте снова.', 'error');
+        }
+    }
+});
+
+
+var taskCount = 0;
+function setMode(mode) {
+    var isPerTask = mode === 'per_task';
+    document.getElementById('tasksBlock').style.display = isPerTask ? '' : 'none';
+    document.getElementById('maxScoreField').style.display = isPerTask ? 'none' : '';
+    document.getElementById('modeTotal').style.borderColor = isPerTask ? 'var(--border)' : 'var(--accent)';
+    document.getElementById('modePerTask').style.borderColor = isPerTask ? 'var(--accent)' : 'var(--border)';
+    if (isPerTask && taskCount === 0) { addTask(); addTask(); }
+}
+
+function addTask() {
+    taskCount++;
+    var n = taskCount;
+    var div = document.createElement('div');
+    div.id = 'task_' + n;
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+    div.innerHTML =
+        '<span style="font-size:13px;color:var(--muted);min-width:20px;">' + n + '.</span>' +
+        '<input type="text" name="task_label[]" placeholder="Название задачи (необязательно)" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">' +
+        '<input type="number" name="task_score[]" placeholder="Баллы" min="0" max="1000" value="10" style="width:90px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">' +
+        '<button type="button" onclick="removeTask(' + n + ')" style="padding:6px 10px;background:none;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;color:var(--muted);">×</button>';
+    document.getElementById('taskList').appendChild(div);
+}
+
+function removeTask(n) {
+    var el = document.getElementById('task_' + n);
+    if (el) el.remove();
+}
+
+// Инициализация: подсветить активный режим
+setMode('total');
+document.querySelector('input[name=grading_mode][value=total]').checked = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лекция — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <script>
+        MathJax = {
+            loader: { load: ['[tex]/boldsymbol'] },
+            tex: { packages: { '[+]': ['boldsymbol'] }, inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="/static/vendor/mathjax/es5/tex-mml-chtml.js"></script>
+    <script src="/static/js/format-text.js"></script>
+    <style>
+        :root {
+            --bg: #f4f5f7; --surface: #fff; --border: #e4e7ec;
+            --text: #1a1d23; --muted: #6b7280; --subtle: #9ca3af;
+            --accent: #2563eb; --accent-light: #eff6ff;
+            --sidebar-w: 260px; --topbar-h: 58px; --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,.10), 0 16px 40px rgba(0,0,0,.06);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; }
+        .topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+        .topbar-crumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+        .topbar-crumb a { color: var(--muted); text-decoration: none; transition: color .15s; }
+        .topbar-crumb a:hover { color: var(--accent); }
+        .topbar-crumb .sep { color: var(--subtle); }
+        .topbar-right { margin-left: auto; display: flex; gap: 8px; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; text-decoration: none; border: none; transition: all .15s; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+        .sidebar { position: fixed; top: var(--topbar-h); left: 0; bottom: 0; width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+        .sb-section { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--subtle); padding: 14px 10px 5px; }
+        .sb-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--muted); text-decoration: none; transition: all .15s; }
+        .sb-link:hover { background: var(--bg); color: var(--text); }
+        .sb-link.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+        .sb-link svg { flex-shrink: 0; opacity: .75; }
+        .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+        .main { margin-left: var(--sidebar-w); padding-top: calc(var(--topbar-h) + 32px); padding-bottom: 60px; padding-left: 36px; padding-right: 36px; max-width: calc(var(--sidebar-w) + 860px); }
+
+        /* Lecture header card */
+        .lecture-header-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 28px 32px;
+            margin-bottom: 24px;
+        }
+        .lecture-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+        .lecture-title { font-family: 'Lora', serif; font-size: 26px; font-weight: 600; color: var(--text); margin-bottom: 10px; line-height: 1.3; }
+        .lecture-desc { font-size: 15px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+        .lecture-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+        .lecture-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* Modules */
+        .modules-title { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+
+        .module-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .module-head {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .module-num {
+            width: 28px; height: 28px; border-radius: 8px;
+            background: var(--accent); color: white;
+            font-size: 13px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .module-head-title { font-size: 15px; font-weight: 600; color: var(--text); flex: 1; }
+        .type-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .type-badge svg { flex-shrink: 0; }
+        .type-text     { background: #dcfce7; color: #166534; }
+        .type-visual   { background: #e0f2fe; color: #0369a1; }
+        .type-question { background: #fef3c7; color: #92400e; }
+        .type-test     { background: #ede9fe; color: #5b21b6; }
+
+        .module-body { padding: 20px 24px; }
+        .module-content-text {
+            font-family: 'Lora', serif;
+            font-size: 16px;
+            line-height: 1.75;
+            color: var(--text);
+        }
+        .module-content-text p { margin-bottom: 14px; }
+
+        /* Question/test styles inside module */
+        .q-item { background: var(--bg); border-radius: 10px; padding: 16px 18px; margin-bottom: 12px; border: 1px solid var(--border); }
+        .q-text { font-weight: 600; font-size: 15px; color: var(--text); margin-bottom: 12px; font-family: 'Lora', serif; }
+        .q-opt { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; font-size: 14px; transition: border .15s, background .15s; }
+        .q-opt:hover { border-color: var(--accent); background: var(--accent-light); }
+        .q-opt input { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+        .q-opt.selected { border-color: var(--accent); background: var(--accent-light); }
+
+        .bottom-nav { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate { animation: fadeUp .3s ease both; }
+        .d1 { animation-delay: .06s; }
+
+        @media (max-width: 700px) { .sidebar { display: none; } .main { margin-left: 0; padding-left: 16px; padding-right: 16px; } }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-sep"></div>
+    <nav class="topbar-crumb">
+        <a href="/lectures">Лекции</a>
+        <span class="sep">›</span>
+        <span id="topbarTitle">Загрузка...</span>
+    </nav>
+    <div class="topbar-right">
+        <a href="/lectures/edit/{{.LectureID}}" class="btn btn-ghost">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Редактировать
+        </a>
+        <button class="btn btn-primary" onclick="shareLecture()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Поделиться
+        </button>
+    </div>
+</header>
+
+<aside class="sidebar">
+    <div class="sb-section">Общее</div>
+    <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Контент</div>
+    <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Библиотека модулей
+    </a>
+    <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Мои лекции
+    </a>
+    <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Начать лекцию
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Classroom</div>
+    <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Мои предметы
+    </a>
+    <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать предмет
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Создание</div>
+    <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+    </a>
+    <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Создать лекцию
+    </a>
+</aside>
+
+<main class="main">
+    <div class="lecture-header-card animate" id="lectureHeaderCard">
+        <div class="lecture-label">Лекция</div>
+        <div class="lecture-title" id="lectureTitle">Загрузка...</div>
+        <div class="lecture-desc" id="lectureDescription"></div>
+        <div class="lecture-chips">
+            <span class="chip">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+                <span id="lectureCourse">...</span>
+            </span>
+            <span class="chip">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span id="lectureAuthor">...</span>
+            </span>
+            <span class="chip">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span id="lectureModules">0</span> модулей
+            </span>
+        </div>
+    </div>
+
+    <div class="modules-title animate d1">Содержание лекции</div>
+    <div id="modulesContainer">
+        <div style="padding: 40px; text-align: center; color: var(--muted); font-size: 14px;">Загрузка модулей...</div>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="/modules" class="btn btn-ghost">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+            Другие модули
+        </a>
+        <a href="/lectures/create" class="btn btn-ghost">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Создать лекцию
+        </a>
+    </div>
+</main>
+
+<script>
+    const lectureId = "{{.LectureID}}";
+    // Авторизация XHR через Bearer из localStorage + cookie как fallback.
+    const token = localStorage.getItem('token') || '';
+    function authHeaders() { return token ? { 'Authorization': 'Bearer ' + token } : {}; }
+
+    const typeLabels = {
+        'text':     { name: 'Текстовый',   cls: 'type-text' },
+        'question': { name: 'Вопросник',   cls: 'type-question' },
+        'test':     { name: 'Тестовый',    cls: 'type-test' }
+    };
+    const typeIcons = {
+        text:     '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        question: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        test:     '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',
+    };
+
+    async function loadLecture() {
+        try {
+            const res = await fetch('/api/lectures/' + lectureId, { headers: authHeaders() });
+            const lecture = await res.json();
+            displayLecture(lecture);
+        } catch(e) {
+            document.getElementById('modulesContainer').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Ошибка загрузки лекции</div>';
+        }
+    }
+
+    function renderModuleContent(module) {
+        var c = module.content;
+        if (!c) return '<p style="color:var(--muted);font-style:italic;">Содержание отсутствует</p>';
+        if (module.type === 'text') {
+            var text = (typeof c === 'object' && c.text) ? c.text : (typeof c === 'string' ? c : JSON.stringify(c));
+            return '<div class="module-content-text">' + formatText(text) + '</div>';
+        }
+        if (module.type === 'test' || module.type === 'question') {
+            var mid = module.id || 0;
+            // poll format: {question, options}
+            if (c.question !== undefined && c.options) {
+                var html = '<div class="q-item"><div class="q-text">' + formatText(c.question) + '</div>';
+                c.options.forEach(function(opt, i) {
+                    html += '<label class="q-opt"><input type="radio" name="vq_' + mid + '_poll" value="' + i + '">' + formatText(opt) + '</label>';
+                });
+                return html + '</div>';
+            }
+            // array format: [{question, answers, correct}]
+            var questions = Array.isArray(c) ? c : (c.questions || []);
+            if (questions.length > 0) {
+                var html = '';
+                questions.forEach(function(q, i) {
+                    html += '<div class="q-item"><div class="q-text">' + (i+1) + '. ' + formatText(q.question) + '</div>';
+                    if (q.answers) {
+                        q.answers.forEach(function(a, ai) {
+                            html += '<label class="q-opt"><input type="radio" name="vq_' + mid + '_' + i + '" value="' + ai + '" onchange="this.closest(\'.q-item\').querySelectorAll(\'.q-opt\').forEach(function(l){l.classList.remove(\'selected\')});this.parentElement.classList.add(\'selected\')">' + formatText(a) + '</label>';
+                        });
+                    }
+                    html += '</div>';
+                });
+                return html;
+            }
+        }
+        return '<p style="color:var(--muted);font-style:italic;">Содержание не распознано</p>';
+    }
+
+    function displayLecture(lecture) {
+        document.title = lecture.title + ' — VisualMath';
+        document.getElementById('topbarTitle').textContent = lecture.title;
+        document.getElementById('lectureTitle').textContent = lecture.title;
+        document.getElementById('lectureDescription').textContent = lecture.description || '';
+        document.getElementById('lectureCourse').textContent = lecture.course_name || '';
+        document.getElementById('lectureAuthor').textContent = lecture.author_name || '';
+        document.getElementById('lectureModules').textContent = lecture.modules_count || 0;
+
+        const container = document.getElementById('modulesContainer');
+        if (!lecture.modules || !lecture.modules.length) {
+            container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);background:var(--surface);border-radius:var(--radius);border:1px dashed var(--border);">В этой лекции нет модулей</div>';
+            return;
+        }
+        container.innerHTML = lecture.modules.map(function(m, i) {
+            var ti = typeLabels[m.type] || { name: m.type, cls: '' };
+            return '<div class="module-card">' +
+                '<div class="module-head">' +
+                    '<div class="module-num">' + (i+1) + '</div>' +
+                    '<div class="module-head-title">' + m.title + '</div>' +
+                    '<span class="type-badge ' + ti.cls + '">' + (typeIcons[m.type]||'') + ti.name + '</span>' +
+                '</div>' +
+                '<div class="module-body">' + renderModuleContent(m) + '</div>' +
+                '</div>';
+        }).join('');
+
+        if (window.MathJax) MathJax.typesetPromise();
+    }
+
+    function shareLecture() {
+        copyToClipboard(window.location.href, 'Ссылка');
+    }
+
+    window.addEventListener('DOMContentLoaded', loadLecture);
+</script>
+</body>
+</html>

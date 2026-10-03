@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Assignment.Title}} — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --subtle: #9ca3af;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --green: #16a34a;
+            --green-light: #dcfce7;
+            --amber: #d97706;
+            --amber-light: #fef3c7;
+            --red: #dc2626;
+            --red-light: #fee2e2;
+            --sidebar-w: 260px;
+            --topbar-h: 58px;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,.10), 0 16px 40px rgba(0,0,0,.06);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            height: var(--topbar-h);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 20px;
+        }
+        .topbar-logo {
+            font-family: 'Lora', serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text);
+            text-decoration: none;
+            letter-spacing: -.3px;
+        }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+        .topbar-crumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        .topbar-crumb a { color: var(--muted); text-decoration: none; transition: color .15s; }
+        .topbar-crumb a:hover { color: var(--accent); }
+        .topbar-crumb .sep { color: var(--subtle); }
+        .topbar-crumb .current { color: var(--text); font-weight: 500; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            position: fixed;
+            top: var(--topbar-h);
+            left: 0;
+            bottom: 0;
+            width: var(--sidebar-w);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .sidebar-section {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--subtle);
+            padding: 12px 12px 6px;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            text-decoration: none;
+            transition: background .15s, color .15s;
+        }
+        .sidebar-link:hover { background: var(--bg); color: var(--text); }
+        .sidebar-link.active { background: var(--accent-light); color: var(--accent); }
+        .sidebar-link svg { flex-shrink: 0; opacity: .7; }
+        .sidebar-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+        /* ── Main ── */
+        .main {
+            margin-left: var(--sidebar-w);
+            padding-top: calc(var(--topbar-h) + 40px);
+            padding-bottom: 60px;
+            padding-left: 40px;
+            padding-right: 40px;
+        }
+        .content {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate { animation: fadeUp .35s ease both; }
+        .delay-1 { animation-delay: .07s; }
+        .delay-2 { animation-delay: .14s; }
+        .delay-3 { animation-delay: .21s; }
+
+        /* ── Assignment info card ── */
+        .assignment-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .assignment-header { padding: 28px 28px 20px; }
+        .assignment-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .assignment-title {
+            font-family: 'Lora', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 10px;
+            line-height: 1.35;
+        }
+        .assignment-desc {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.65;
+            margin-bottom: 16px;
+        }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .01em;
+        }
+        .chip-blue { background: var(--accent-light); color: var(--accent); }
+        .chip-amber { background: var(--amber-light); color: var(--amber); }
+        .chip-red { background: var(--red-light); color: var(--red); }
+        .chip-a { text-decoration: none; transition: opacity .15s; }
+        .chip-a:hover { opacity: .8; }
+
+        .assignment-footer {
+            padding: 14px 28px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all .15s;
+        }
+        .btn:hover { filter: brightness(.92); }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; filter: none; }
+        .btn-ghost {
+            background: transparent;
+            border: 1.5px solid var(--border);
+            color: var(--muted);
+        }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); filter: none; }
+        .btn-green { background: var(--green); color: #fff; }
+        .btn-sm { padding: 7px 14px; font-size: 13px; }
+
+        /* ── Upload card ── */
+        .upload-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 28px;
+        }
+        .upload-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+        .upload-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 36px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .dropzone:hover, .dropzone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+        .dropzone input[type=file] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .dropzone-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .dropzone-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+        .dropzone-hint { font-size: 12px; color: var(--muted); }
+
+        .file-chosen {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--accent-light);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .file-chosen-name { font-size: 13px; font-weight: 600; color: var(--accent); flex: 1; }
+        .file-chosen-size { font-size: 12px; color: var(--muted); }
+
+        /* ── Camera scanner ── */
+        .scanner-actions { display:flex; gap:10px; flex-wrap:wrap; margin: 0 0 16px; }
+        .scanner-modal {
+            display:none; position:fixed; inset:0; z-index:3000;
+            background:rgba(15,23,42,.78); padding:20px;
+            align-items:center; justify-content:center;
+        }
+        .scanner-modal.open { display:flex; }
+        .scanner-panel {
+            width:min(920px,100%); max-height:94vh; overflow:auto;
+            background:var(--surface); border-radius:14px; padding:18px;
+            box-shadow:0 24px 80px rgba(0,0,0,.35);
+        }
+        .scanner-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        .scanner-title { font-size:18px; font-weight:700; }
+        .scanner-video-wrap { background:#000; border-radius:12px; overflow:hidden; }
+        #scannerVideo { width:100%; max-height:62vh; display:block; object-fit:contain; }
+        .scanner-toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .scanner-options { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:12px; color:var(--muted); font-size:13px; }
+        .scanner-options label { display:inline-flex; align-items:center; gap:7px; cursor:pointer; }
+        .scanner-options input { width:16px; height:16px; accent-color:var(--accent); }
+        .scanner-hint { color:var(--subtle); font-size:12px; margin-top:8px; line-height:1.45; }
+        .scanner-pages { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .scanner-thumb-wrap { position:relative; width:96px; }
+        .scanner-thumb { width:96px; height:124px; object-fit:cover; border:1px solid var(--border); border-radius:7px; display:block; background:#f8fafc; }
+        .scanner-thumb-label { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:11px; margin-top:4px; text-align:center; }
+        .scanner-remove { position:absolute; top:4px; right:4px; width:22px; height:22px; border:0; border-radius:50%; background:rgba(15,23,42,.78); color:#fff; cursor:pointer; font-size:15px; line-height:20px; }
+        .scanner-remove:hover { background:var(--red); }
+        .scanner-count { color:var(--muted); font-size:13px; margin-top:8px; }
+
+        /* ── Status cards ── */
+        .status-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .status-card-inner {
+            display: flex;
+            gap: 16px;
+            padding: 24px 28px;
+            align-items: flex-start;
+        }
+        .status-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .status-icon-amber { background: var(--amber-light); }
+        .status-icon-green { background: var(--green-light); }
+        .status-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .status-sub { font-size: 13px; color: var(--muted); }
+
+        .status-card-footer {
+            padding: 14px 28px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Teacher comment ── */
+        .comment-block {
+            padding: 0 28px 24px;
+        }
+        .comment-label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 8px;
+        }
+        .comment-box {
+            background: var(--green-light);
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #14532d;
+            line-height: 1.6;
+        }
+
+        /* ── Comments panel (GC-style) ── */
+        .main-with-comments {
+            display: grid;
+            grid-template-columns: 1fr 296px;
+            gap: 0;
+            align-items: start;
+        }
+        .main-with-comments .content { padding-right: 24px; }
+        .comments-panel {
+            position: sticky;
+            top: calc(var(--topbar-h) + 20px);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - var(--topbar-h) - 40px);
+            overflow: hidden;
+        }
+        .cp-header {
+            padding: 16px 18px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .cp-count {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+        .cp-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .cp-msg {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .cp-msg-meta {
+            font-size: 11px;
+            color: var(--subtle);
+            display: flex;
+            justify-content: space-between;
+        }
+        .cp-msg-meta .name { font-weight: 600; color: var(--muted); }
+        .cp-msg-text {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.55;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: var(--bg);
+        }
+        .cp-msg.teacher .cp-msg-text { background: var(--accent-light); color: #1e40af; }
+        .cp-empty {
+            text-align: center;
+            color: var(--subtle);
+            font-size: 13px;
+            padding: 24px 0;
+        }
+        .cp-hint {
+            font-size: 11px;
+            color: var(--subtle);
+            text-align: center;
+            padding: 0 16px 8px;
+        }
+        .cp-input-area {
+            padding: 10px 14px 14px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .cp-textarea {
+            flex: 1;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            resize: none;
+            min-height: 36px;
+            max-height: 100px;
+            outline: none;
+            transition: border .15s;
+            color: var(--text);
+            background: var(--surface);
+            line-height: 1.5;
+        }
+        .cp-textarea:focus { border-color: var(--accent); }
+        .cp-send {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: var(--accent);
+            border: none;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background .15s;
+        }
+        .cp-send:hover { background: #1d4ed8; }
+        .cp-send:disabled { opacity: .4; cursor: default; }
+
+        @media (max-width: 900px) {
+            .main-with-comments { grid-template-columns: 1fr; }
+            .main-with-comments .content { padding-right: 0; }
+            .comments-panel { position: static; max-height: 400px; margin-top: 20px; }
+        }
+        @media (max-width: 700px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding-left: 20px; padding-right: 20px; }
+            /* >=16px чтобы iOS не зумил при тапе по полю комментария */
+            .cp-textarea { font-size: 16px; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-sep"></div>
+    <nav class="topbar-crumb">
+        <a href="/classroom/subjects">Classroom</a>
+        <span class="sep">›</span>
+        <a href="/classroom/subjects/{{.Assignment.SubjectID}}">Предмет</a>
+        <span class="sep">›</span>
+        <span class="current">{{.Assignment.Title}}</span>
+    </nav>
+</header>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="sidebar-section">Навигация</div>
+    <a href="/dashboard" class="sidebar-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Главная
+    </a>
+    <a href="/classroom/subjects" class="sidebar-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Все предметы
+    </a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">Задание</div>
+    <a href="/classroom/subjects/{{.Assignment.SubjectID}}" class="sidebar-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Назад к предмету
+    </a>
+    <a href="#" class="sidebar-link active">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        {{.Assignment.Title}}
+    </a>
+</aside>
+
+<!-- Main -->
+<main class="main {{if and .AllowComments .Submission}}main-with-comments{{end}}">
+    <div class="content">
+
+        <!-- Assignment info -->
+        <div class="assignment-card animate">
+            <div class="assignment-header">
+                <div class="assignment-label">Задание</div>
+                <div class="assignment-title">{{.Assignment.Title}}</div>
+                {{if .Assignment.Description}}
+                <p class="assignment-desc">{{.Assignment.Description}}</p>
+                {{end}}
+                <div class="chips">
+                    {{if .Assignment.Deadline}}
+                    <span class="chip {{if .DeadlinePassed}}chip-red{{else}}chip-amber{{end}}">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        {{if .DeadlinePassed}}Дедлайн истёк: {{else}}Дедлайн: {{end}}{{.Assignment.Deadline.Format "02.01.2006 в 15:04"}}
+                    </span>
+                    {{end}}
+                    {{if .Assignment.ConditionFile}}
+                    <a href="/classroom/assignments/{{.Assignment.ID}}/condition" class="chip chip-blue chip-a">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Скачать условие
+                    </a>
+                    {{end}}
+                    {{if .VariantFile}}
+                    <a href="/classroom/assignments/{{.Assignment.ID}}/variant" class="chip chip-blue chip-a">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Скачать вариант {{.VariantIdx}}
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+            {{if and (eq .Assignment.GradingMode "per_task") .Assignment.Tasks}}
+            <div style="border-top:1px solid var(--border);padding:16px 28px;">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Разбалловка</div>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="color:var(--muted);">
+                            <th style="text-align:left;padding:4px 8px 4px 0;font-weight:600;">Задача</th>
+                            <th style="text-align:right;padding:4px 0;font-weight:600;">Макс. баллов</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {{range .Assignment.Tasks}}
+                    <tr style="border-top:1px solid var(--border);">
+                        <td style="padding:6px 8px 6px 0;color:var(--text);">
+                            {{if .Label}}{{.Label}}{{else}}Задача {{.TaskNumber}}{{end}}
+                        </td>
+                        <td style="padding:6px 0;text-align:right;font-weight:600;color:var(--accent);">{{.MaxScore}}</td>
+                    </tr>
+                    {{end}}
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top:2px solid var(--border);">
+                            <td style="padding:6px 8px 0 0;font-weight:700;">Итого</td>
+                            <td style="padding:6px 0 0;text-align:right;font-weight:700;color:var(--accent);">{{.Assignment.MaxScore}}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Submission states -->
+        {{if .Submission}}
+
+            {{if eq .Submission.Status "reviewed"}}
+            <!-- State 3: Reviewed -->
+            <div class="status-card animate delay-1">
+                <div class="status-card-inner">
+                    <div class="status-icon status-icon-green">
+                        <svg width="22" height="22" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div>
+                        <div class="status-title">Работа проверена!</div>
+                        <div class="status-sub">Преподаватель проверил вашу работу</div>
+                        {{if .Submission.Grade}}
+                        <div style="margin-top:8px;font-size:22px;font-family:'Lora',serif;font-weight:600;color:var(--accent);">
+                            {{.Submission.Grade}}<span style="font-size:14px;color:var(--muted);font-family:'DM Sans',sans-serif;">/{{.Assignment.MaxScore}}</span>
+                        </div>
+                        {{if .TaskGrades}}
+                        <div style="margin-top:12px;">
+                            {{range .TaskGrades}}
+                            <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px solid var(--border);">
+                                <span style="color:var(--muted);">{{if .Label}}{{.Label}}{{else}}Задача {{.TaskNumber}}{{end}}</span>
+                                <span style="font-weight:600;">{{.Score}}<span style="color:var(--muted);font-weight:400;">/{{.MaxScore}}</span></span>
+                            </div>
+                            {{end}}
+                        </div>
+                        {{end}}
+                        {{end}}
+                    </div>
+                </div>
+                {{if .Submission.TeacherComment}}
+                <div class="comment-block">
+                    <div class="comment-label">Комментарий преподавателя</div>
+                    <div class="comment-box">{{.Submission.TeacherComment}}</div>
+                </div>
+                {{end}}
+                <div class="status-card-footer">
+                    <a href="/classroom/submissions/{{.Submission.ID}}/download" class="btn btn-ghost btn-sm">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Моя работа
+                    </a>
+                    {{if .Submission.AnnotatedFilePath}}
+                    <a href="/classroom/submissions/{{.Submission.ID}}/view" class="btn btn-green btn-sm" target="_blank" rel="noopener">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+                        Работа с аннотациями
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+
+            {{else}}
+            <!-- State 2: Waiting for review -->
+            <div class="status-card animate delay-1">
+                <div class="status-card-inner">
+                    <div class="status-icon status-icon-amber">
+                        <svg width="22" height="22" fill="none" stroke="var(--amber)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div>
+                        <div class="status-title">Работа сдана, ожидает проверки</div>
+                        <div class="status-sub">Сдано {{.Submission.SubmittedAt.Format "02.01.2006 в 15:04"}}{{if .Submission.IsLate}} · <span style="color:#dc2626;font-weight:600;">сдано с опозданием</span>{{end}}</div>
+                    </div>
+                </div>
+                <div class="status-card-footer">
+                    <a href="/classroom/submissions/{{.Submission.ID}}/view" class="btn btn-ghost btn-sm" target="_blank">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Просмотреть
+                    </a>
+                    <a href="/classroom/submissions/{{.Submission.ID}}/download" class="btn btn-ghost btn-sm">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Скачать мою работу
+                    </a>
+                    {{if not .DeadlinePassed}}
+                    <button onclick="withdrawSubmission({{.Submission.ID}})" class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red);">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 01-4 4H4"/></svg>
+                        Отозвать
+                    </button>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+
+        {{else}}
+        <!-- State 1: No submission -->
+        <div class="upload-card animate delay-1">
+            {{if .DeadlinePassed}}
+            <div style="display:flex;align-items:center;gap:12px;padding:20px;background:var(--red-light);border-radius:8px;">
+                <svg width="20" height="20" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                    <div style="font-weight:600;color:var(--red);">Приём работ закрыт</div>
+                    <div style="font-size:13px;color:var(--red);opacity:.8;">Дедлайн истёк, сдача больше не принимается</div>
+                </div>
+            </div>
+            {{else}}
+            <div class="upload-title">Сдать работу</div>
+            <div class="upload-sub">Загрузите PDF или фотографию решения — фото будет обработано в браузере — либо отсканируйте листы камерой</div>
+
+            <div class="scanner-actions">
+                <button type="button" class="btn btn-ghost" id="openScannerBtn">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    Сканировать с камеры
+                </button>
+            </div>
+
+            <form method="POST" action="/classroom/assignments/{{.Assignment.ID}}/submit" enctype="multipart/form-data" id="uploadForm">
+                <div class="dropzone" id="dropzone">
+                    <input type="file" name="pdf_file" id="pdfFile" accept=".pdf,image/jpeg,image/png,image/webp" required>
+                    <div class="dropzone-icon">
+                        <svg width="24" height="24" fill="none" stroke="var(--muted)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div class="dropzone-label" id="dzLabel">Нажмите или перетащите файл</div>
+                    <div class="dropzone-hint">PDF или фото до 80 МБ</div>
+                </div>
+
+                <div class="file-chosen" id="fileChosen">
+                    <svg width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span class="file-chosen-name" id="chosenName"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Сдать работу
+                </button>
+            </form>
+            {{end}}
+        </div>
+        {{end}}
+
+    </div><!-- end .content -->
+
+    {{if and .AllowComments .Submission}}
+    <div class="comments-panel" id="commentsPanel">
+        <div class="cp-header">
+            <div>Личный комментарий</div>
+            <div class="cp-count" id="cpCount">Загрузка...</div>
+        </div>
+        <div class="cp-messages" id="cpMessages">
+            <div class="cp-empty" id="cpEmpty">Нет сообщений</div>
+        </div>
+        <div class="cp-hint">Видны только вам и преподавателям.</div>
+        <div class="cp-input-area">
+            <textarea class="cp-textarea" id="cpInput" placeholder="Добавить личный комментарий..." rows="1"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendComment();}"></textarea>
+            <button class="cp-send" id="cpSendBtn" onclick="sendComment()" title="Отправить">
+                <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+            </button>
+        </div>
+    </div>
+    {{end}}
+
+</main>
+
+<div class="scanner-modal" id="scannerModal" aria-hidden="true">
+    <div class="scanner-panel">
+        <div class="scanner-head">
+            <div>
+                <div class="scanner-title">Сканирование документа</div>
+                <div class="scanner-count" id="scannerCount">Снято страниц: 0</div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="closeScannerBtn">Закрыть</button>
+        </div>
+        <div class="scanner-video-wrap">
+            <video id="scannerVideo" autoplay playsinline muted></video>
+        </div>
+        <div class="scanner-toolbar">
+            <button type="button" class="btn btn-primary" id="capturePageBtn">Снять страницу</button>
+            <button type="button" class="btn btn-green" id="finishScanBtn" disabled>Готово — создать PDF</button>
+            <button type="button" class="btn btn-ghost" id="clearScanBtn" disabled>Очистить</button>
+        </div>
+        <div class="scanner-options">
+            <label><input type="checkbox" id="autoCropScan" checked> Автоматически кадрировать лист</label>
+            <label><input type="checkbox" id="perspectiveScan" checked> Исправить перспективу листа</label>
+            <label><input type="checkbox" id="enhanceScan" checked> Улучшить контраст и резкость</label>
+        </div>
+        <div class="scanner-hint">Держите лист целиком в кадре и оставляйте вокруг него контрастный фон. Обработка и выравнивание выполняются в браузере; если контур листа не распознан надёжно, сохраняется обычное кадрирование.</div>
+        <div class="scanner-pages" id="scannerPages"></div>
+    </div>
+</div>
+
+<script>
+    var fileInput = document.getElementById('pdfFile');
+    var dropzone  = document.getElementById('dropzone');
+    var dzLabel   = document.getElementById('dzLabel');
+    var fileChosen= document.getElementById('fileChosen');
+    var chosenName= document.getElementById('chosenName');
+
+    // ── Camera scanner. PDF создаётся локально, без CDN/сторонних библиотек. ──
+    var scannerModal = document.getElementById('scannerModal');
+    var scannerVideo = document.getElementById('scannerVideo');
+    var openScannerBtn = document.getElementById('openScannerBtn');
+    var closeScannerBtn = document.getElementById('closeScannerBtn');
+    var capturePageBtn = document.getElementById('capturePageBtn');
+    var finishScanBtn = document.getElementById('finishScanBtn');
+    var clearScanBtn = document.getElementById('clearScanBtn');
+    var scannerPages = document.getElementById('scannerPages');
+    var scannerCount = document.getElementById('scannerCount');
+    var autoCropScan = document.getElementById('autoCropScan');
+    var perspectiveScan = document.getElementById('perspectiveScan');
+    var enhanceScan = document.getElementById('enhanceScan');
+    var scannerStream = null;
+    var scanPages = [];
+    var MAX_SCAN_PAGES = 30;
+    var MAX_UPLOAD = 80 * 1024 * 1024; // держим синхронно с RequestSize/nginx
+
+    function stopScannerCamera() {
+        if (scannerStream) {
+            scannerStream.getTracks().forEach(function(t) { t.stop(); });
+            scannerStream = null;
+        }
+        if (scannerVideo) scannerVideo.srcObject = null;
+    }
+
+    function closeScanner() {
+        stopScannerCamera();
+        if (scannerModal) scannerModal.classList.remove('open');
+    }
+
+    function refreshScannerPages() {
+        if (!scannerPages) return;
+        scannerPages.innerHTML = '';
+        scanPages.forEach(function(page, i) {
+            var wrap = document.createElement('div');
+            wrap.className = 'scanner-thumb-wrap';
+            var img = document.createElement('img');
+            img.className = 'scanner-thumb';
+            img.alt = 'Страница ' + (i + 1);
+            img.src = page.preview;
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'scanner-remove';
+            remove.title = 'Удалить страницу';
+            remove.setAttribute('aria-label', 'Удалить страницу ' + (i + 1));
+            remove.textContent = '×';
+            remove.addEventListener('click', function() { removeScannerPage(i); });
+            var label = document.createElement('span');
+            label.className = 'scanner-thumb-label';
+            label.textContent = 'Страница ' + (i + 1) + (page.perspective ? ' · выровнена' : (page.detected ? ' · кадрирована' : '')) + (page.processed ? ' · улучшена' : '');
+            wrap.appendChild(img);
+            wrap.appendChild(remove);
+            wrap.appendChild(label);
+            scannerPages.appendChild(wrap);
+        });
+        if (scannerCount) scannerCount.textContent = 'Снято страниц: ' + scanPages.length;
+        if (finishScanBtn) finishScanBtn.disabled = scanPages.length === 0;
+        if (clearScanBtn) clearScanBtn.disabled = scanPages.length === 0;
+    }
+
+    // Определяет границы светлого листа на фоне по проекциям ярких пикселей.
+    // Для снимка без контрастного фона возвращает весь кадр, поэтому обработка
+    // никогда не обрезает документ агрессивно.
+    function detectDocumentBounds(source) {
+        var maxSide = 900;
+        var ratio = Math.min(1, maxSide / Math.max(source.width, source.height));
+        var w = Math.max(1, Math.round(source.width * ratio));
+        var h = Math.max(1, Math.round(source.height * ratio));
+        var probe = document.createElement('canvas');
+        probe.width = w; probe.height = h;
+        var pctx = probe.getContext('2d', { alpha: false });
+        pctx.drawImage(source, 0, 0, w, h);
+        var data = pctx.getImageData(0, 0, w, h).data;
+        var borderSum = 0, borderCount = 0;
+        function luminanceAt(x, y) {
+            var k = (y * w + x) * 4;
+            return 0.299 * data[k] + 0.587 * data[k + 1] + 0.114 * data[k + 2];
+        }
+        for (var x = 0; x < w; x += 8) {
+            borderSum += luminanceAt(x, 0) + luminanceAt(x, h - 1); borderCount += 2;
+        }
+        for (var y = 8; y < h - 1; y += 8) {
+            borderSum += luminanceAt(0, y) + luminanceAt(w - 1, y); borderCount += 2;
+        }
+        var borderMean = borderSum / Math.max(1, borderCount);
+        var threshold = Math.max(150, Math.min(235, borderMean + 24));
+        var col = new Uint32Array(w), row = new Uint32Array(h);
+        for (var py = 0; py < h; py++) {
+            for (var px = 0; px < w; px++) {
+                if (luminanceAt(px, py) >= threshold) { col[px]++; row[py]++; }
+            }
+        }
+        var minX = 0, maxX = w - 1, minY = 0, maxY = h - 1;
+        var colLimit = Math.max(2, Math.floor(h * 0.08));
+        var rowLimit = Math.max(2, Math.floor(w * 0.08));
+        for (var cx = 0; cx < w; cx++) { if (col[cx] >= colLimit) { minX = cx; break; } }
+        for (var cx2 = w - 1; cx2 >= 0; cx2--) { if (col[cx2] >= colLimit) { maxX = cx2; break; } }
+        for (var ry = 0; ry < h; ry++) { if (row[ry] >= rowLimit) { minY = ry; break; } }
+        for (var ry2 = h - 1; ry2 >= 0; ry2--) { if (row[ry2] >= rowLimit) { maxY = ry2; break; } }
+        var padX = Math.round(w * 0.018), padY = Math.round(h * 0.018);
+        minX = Math.max(0, minX - padX); maxX = Math.min(w - 1, maxX + padX);
+        minY = Math.max(0, minY - padY); maxY = Math.min(h - 1, maxY + padY);
+        var area = (maxX - minX + 1) * (maxY - minY + 1);
+        if (area < w * h * 0.18 || area > w * h * 0.995) {
+            return { x: 0, y: 0, width: source.width, height: source.height, detected: false };
+        }
+        return {
+            x: Math.round(minX / ratio), y: Math.round(minY / ratio),
+            width: Math.min(source.width - Math.round(minX / ratio), Math.round((maxX - minX + 1) / ratio)),
+            height: Math.min(source.height - Math.round(minY / ratio), Math.round((maxY - minY + 1) / ratio)),
+            detected: true
+        };
+    }
+
+    function scannerLuminance(data, width, x, y) {
+        var offset = (y * width + x) * 4;
+        return 0.299 * data[offset] + 0.587 * data[offset + 1] + 0.114 * data[offset + 2];
+    }
+
+    function scannerMedian(values) {
+        if (!values.length) return 0;
+        values.sort(function(a, b) { return a - b; });
+        return values[Math.floor(values.length / 2)];
+    }
+
+    function fitScannerLine(points) {
+        if (points.length < 8) return null;
+        var sumX = 0, sumY = 0;
+        points.forEach(function(point) { sumX += point.x; sumY += point.y; });
+        var meanX = sumX / points.length, meanY = sumY / points.length;
+        var numerator = 0, denominator = 0;
+        points.forEach(function(point) {
+            var dx = point.x - meanX;
+            numerator += dx * (point.y - meanY);
+            denominator += dx * dx;
+        });
+        if (denominator < 1e-6) return null;
+        return { slope: numerator / denominator, intercept: meanY - numerator / denominator * meanX };
+    }
+
+    function fitRobustScannerLine(points) {
+        var first = fitScannerLine(points);
+        if (!first) return null;
+        var residuals = points.map(function(point) {
+            return Math.abs(point.y - (first.slope * point.x + first.intercept));
+        });
+        var limit = Math.max(3, scannerMedian(residuals) * 2.5);
+        var inliers = points.filter(function(point) {
+            return Math.abs(point.y - (first.slope * point.x + first.intercept)) <= limit;
+        });
+        return inliers.length >= 8 ? (fitScannerLine(inliers) || first) : first;
+    }
+
+    function scannerDistance(first, second) {
+        return Math.hypot(second.x - first.x, second.y - first.y);
+    }
+
+    function scannerPolygonArea(points) {
+        var sum = 0;
+        for (var i = 0; i < points.length; i++) {
+            var next = points[(i + 1) % points.length];
+            sum += points[i].x * next.y - next.x * points[i].y;
+        }
+        return Math.abs(sum) / 2;
+    }
+
+    function scannerIsConvex(points) {
+        var sign = 0;
+        for (var i = 0; i < points.length; i++) {
+            var current = points[i], next = points[(i + 1) % points.length], after = points[(i + 2) % points.length];
+            var cross = (next.x - current.x) * (after.y - next.y) - (next.y - current.y) * (after.x - next.x);
+            if (Math.abs(cross) < 1e-4) return false;
+            var nextSign = cross > 0 ? 1 : -1;
+            if (sign && sign !== nextSign) return false;
+            sign = nextSign;
+        }
+        return true;
+    }
+
+    // Находит четыре стороны светлого листа на контрастном фоне. Линии сторон
+    // строятся отдельно, поэтому лист под углом не сводится к прямоугольному crop.
+    function detectDocumentQuadrilateral(source) {
+        var maxSide = 1000;
+        var ratio = Math.min(1, maxSide / Math.max(source.width, source.height));
+        var width = Math.max(1, Math.round(source.width * ratio));
+        var height = Math.max(1, Math.round(source.height * ratio));
+        var probe = document.createElement('canvas');
+        probe.width = width; probe.height = height;
+        var probeContext = probe.getContext('2d', { alpha: false, willReadFrequently: true });
+        probeContext.drawImage(source, 0, 0, width, height);
+        var data = probeContext.getImageData(0, 0, width, height).data;
+        var border = [];
+        for (var bx = 0; bx < width; bx += 5) {
+            border.push(scannerLuminance(data, width, bx, 0), scannerLuminance(data, width, bx, height - 1));
+        }
+        for (var by = 5; by < height - 1; by += 5) {
+            border.push(scannerLuminance(data, width, 0, by), scannerLuminance(data, width, width - 1, by));
+        }
+        var threshold = Math.max(145, Math.min(238, scannerMedian(border) + 22));
+        var rows = [], columns = Array.from({ length: width }, function() { return { first: -1, last: -1, count: 0 }; });
+        for (var y = 0; y < height; y++) {
+            var first = -1, last = -1, count = 0;
+            for (var x = 0; x < width; x++) {
+                if (scannerLuminance(data, width, x, y) < threshold) continue;
+                if (first < 0) first = x;
+                last = x;
+                count++;
+                if (columns[x].first < 0) columns[x].first = y;
+                columns[x].last = y;
+                columns[x].count++;
+            }
+            if (first >= 0) rows.push({ position: y, first: first, last: last, count: count });
+        }
+        var rowLimit = Math.max(3, Math.floor(width * 0.025));
+        var columnLimit = Math.max(3, Math.floor(height * 0.025));
+        var activeRows = rows.filter(function(row) { return row.count >= rowLimit && row.last - row.first >= width * 0.10; });
+        var activeColumns = columns.map(function(column, x) {
+            return { position: x, first: column.first, last: column.last, count: column.count };
+        }).filter(function(column) { return column.count >= columnLimit && column.last - column.first >= height * 0.10; });
+        if (activeRows.length < 16 || activeColumns.length < 16) return null;
+
+        var minRow = activeRows[0].position, maxRow = activeRows[activeRows.length - 1].position;
+        var minColumn = activeColumns[0].position, maxColumn = activeColumns[activeColumns.length - 1].position;
+        var rowInset = (maxRow - minRow) * 0.04, columnInset = (maxColumn - minColumn) * 0.04;
+        var innerRows = activeRows.filter(function(row) { return row.position >= minRow + rowInset && row.position <= maxRow - rowInset; });
+        var innerColumns = activeColumns.filter(function(column) { return column.position >= minColumn + columnInset && column.position <= maxColumn - columnInset; });
+        var left = fitRobustScannerLine(innerRows.map(function(row) { return { x: row.position, y: row.first }; }));
+        var right = fitRobustScannerLine(innerRows.map(function(row) { return { x: row.position, y: row.last }; }));
+        var top = fitRobustScannerLine(innerColumns.map(function(column) { return { x: column.position, y: column.first }; }));
+        var bottom = fitRobustScannerLine(innerColumns.map(function(column) { return { x: column.position, y: column.last }; }));
+        if (!left || !right || !top || !bottom) return null;
+
+        // Left/right are x = f(y); top/bottom are y = f(x). Convert the former
+        // into the common y = f(x) form only at the four intersections.
+        function sideAndEdge(side, edge) {
+            var denominator = 1 - side.slope * edge.slope;
+            if (Math.abs(denominator) < 1e-6) return null;
+            var pointX = (side.slope * edge.intercept + side.intercept) / denominator;
+            return { x: pointX, y: edge.slope * pointX + edge.intercept };
+        }
+        var quad = [sideAndEdge(left, top), sideAndEdge(right, top), sideAndEdge(right, bottom), sideAndEdge(left, bottom)];
+        if (quad.some(function(point) { return !point || !isFinite(point.x) || !isFinite(point.y); })) return null;
+        if (!scannerIsConvex(quad)) return null;
+        var area = scannerPolygonArea(quad);
+        if (area < width * height * 0.18 || area > width * height * 0.995) return null;
+        if (quad.some(function(point) { return point.x < -width * 0.04 || point.x > width * 1.04 || point.y < -height * 0.04 || point.y > height * 1.04; })) return null;
+        if (scannerDistance(quad[0], quad[1]) < width * 0.16 || scannerDistance(quad[0], quad[3]) < height * 0.16) return null;
+        return quad.map(function(point) { return { x: point.x / ratio, y: point.y / ratio }; });
+    }
+
+    function solvePerspectiveSystem(matrix, values) {
+        var size = values.length;
+        var augmented = matrix.map(function(row, index) { return row.slice().concat(values[index]); });
+        for (var column = 0; column < size; column++) {
+            var pivot = column;
+            for (var row = column + 1; row < size; row++) {
+                if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
+            }
+            if (Math.abs(augmented[pivot][column]) < 1e-10) return null;
+            var swap = augmented[column]; augmented[column] = augmented[pivot]; augmented[pivot] = swap;
+            var divisor = augmented[column][column];
+            for (var normalize = column; normalize <= size; normalize++) augmented[column][normalize] /= divisor;
+            for (var eliminate = 0; eliminate < size; eliminate++) {
+                if (eliminate === column) continue;
+                var factor = augmented[eliminate][column];
+                for (var valueIndex = column; valueIndex <= size; valueIndex++) augmented[eliminate][valueIndex] -= factor * augmented[column][valueIndex];
+            }
+        }
+        return augmented.map(function(row) { return row[size]; });
+    }
+
+    function perspectiveCoefficients(width, height, quadrilateral) {
+        var destination = [{ x: 0, y: 0 }, { x: width - 1, y: 0 }, { x: width - 1, y: height - 1 }, { x: 0, y: height - 1 }];
+        var matrix = [], values = [];
+        destination.forEach(function(point, index) {
+            var source = quadrilateral[index], x = point.x, y = point.y;
+            matrix.push([x, y, 1, 0, 0, 0, -source.x * x, -source.x * y]); values.push(source.x);
+            matrix.push([0, 0, 0, x, y, 1, -source.y * x, -source.y * y]); values.push(source.y);
+        });
+        return solvePerspectiveSystem(matrix, values);
+    }
+
+    function warpDocumentPerspective(source, quadrilateral) {
+        var averageWidth = (scannerDistance(quadrilateral[0], quadrilateral[1]) + scannerDistance(quadrilateral[3], quadrilateral[2])) / 2;
+        var averageHeight = (scannerDistance(quadrilateral[0], quadrilateral[3]) + scannerDistance(quadrilateral[1], quadrilateral[2])) / 2;
+        var scale = Math.min(1, 2400 / Math.max(averageWidth, averageHeight));
+        var targetWidth = Math.max(1, Math.round(averageWidth * scale));
+        var targetHeight = Math.max(1, Math.round(averageHeight * scale));
+        var coefficients = perspectiveCoefficients(targetWidth, targetHeight, quadrilateral);
+        if (!coefficients) return null;
+        var sourceContext = source.getContext('2d', { alpha: false, willReadFrequently: true });
+        var sourceImage = sourceContext.getImageData(0, 0, source.width, source.height);
+        var canvas = document.createElement('canvas');
+        canvas.width = targetWidth; canvas.height = targetHeight;
+        var outputContext = canvas.getContext('2d', { alpha: false });
+        var outputImage = outputContext.createImageData(targetWidth, targetHeight);
+        var input = sourceImage.data, output = outputImage.data;
+        for (var y = 0; y < targetHeight; y++) {
+            for (var x = 0; x < targetWidth; x++) {
+                var denominator = coefficients[6] * x + coefficients[7] * y + 1;
+                var sourceX = Math.round((coefficients[0] * x + coefficients[1] * y + coefficients[2]) / denominator);
+                var sourceY = Math.round((coefficients[3] * x + coefficients[4] * y + coefficients[5]) / denominator);
+                var targetOffset = (y * targetWidth + x) * 4;
+                if (sourceX < 0 || sourceX >= source.width || sourceY < 0 || sourceY >= source.height) {
+                    output[targetOffset] = output[targetOffset + 1] = output[targetOffset + 2] = 255; output[targetOffset + 3] = 255;
+                    continue;
+                }
+                var sourceOffset = (sourceY * source.width + sourceX) * 4;
+                output[targetOffset] = input[sourceOffset]; output[targetOffset + 1] = input[sourceOffset + 1]; output[targetOffset + 2] = input[sourceOffset + 2]; output[targetOffset + 3] = 255;
+            }
+        }
+        outputContext.putImageData(outputImage, 0, 0);
+        return canvas;
+    }
+
+    function percentile(hist, total, p) {
+        var target = total * p, sum = 0;
+        for (var i = 0; i < hist.length; i++) { sum += hist[i]; if (sum >= target) return i; }
+        return hist.length - 1;
+    }
+
+    // Переводит снимок в серый цвет, растягивает тональный диапазон и слегка
+    // повышает контраст. Все операции выполняются в браузере.
+    function enhanceDocumentCanvas(canvas) {
+        var ctx = canvas.getContext('2d', { willReadFrequently: true });
+        var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var d = image.data, hist = new Uint32Array(256), total = canvas.width * canvas.height;
+        for (var i = 0; i < d.length; i += 4) {
+            var gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+            d[i] = d[i + 1] = d[i + 2] = gray; hist[gray]++;
+        }
+        var low = percentile(hist, total, 0.015), high = percentile(hist, total, 0.985);
+        if (high <= low + 8) { low = 0; high = 255; }
+        var inv = 255 / (high - low);
+        for (var j = 0; j < d.length; j += 4) {
+            var v = (d[j] - low) * inv;
+            v = Math.max(0, Math.min(255, (v - 128) * 1.12 + 128));
+            d[j] = d[j + 1] = d[j + 2] = Math.round(v);
+        }
+        ctx.putImageData(image, 0, 0);
+    }
+
+    async function prepareScanPage(sourceCanvas) {
+        var bounds = autoCropScan && autoCropScan.checked ? detectDocumentBounds(sourceCanvas) : {
+            x: 0, y: 0, width: sourceCanvas.width, height: sourceCanvas.height, detected: false
+        };
+        var quadrilateral = autoCropScan && autoCropScan.checked && perspectiveScan && perspectiveScan.checked ? detectDocumentQuadrilateral(sourceCanvas) : null;
+        var canvas = quadrilateral ? warpDocumentPerspective(sourceCanvas, quadrilateral) : null;
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            var maxDimension = 2400;
+            var scale = Math.min(1, maxDimension / Math.max(bounds.width, bounds.height));
+            canvas.width = Math.max(1, Math.round(bounds.width * scale));
+            canvas.height = Math.max(1, Math.round(bounds.height * scale));
+            var ctx = canvas.getContext('2d', { alpha: false });
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(sourceCanvas, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, canvas.width, canvas.height);
+        }
+        if (enhanceScan && enhanceScan.checked) enhanceDocumentCanvas(canvas);
+        var blob = await canvasToJpegBlob(canvas, 0.93);
+        return { blob: blob, width: canvas.width, height: canvas.height, detected: bounds.detected || !!quadrilateral, perspective: !!quadrilateral, processed: !!(enhanceScan && enhanceScan.checked) };
+    }
+
+    async function openScanner() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showToast('Этот браузер не поддерживает доступ к камере.', 'error');
+            return;
+        }
+        try {
+            scannerStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                audio: false
+            });
+            scannerVideo.srcObject = scannerStream;
+            await scannerVideo.play();
+            scannerModal.classList.add('open');
+        } catch (err) {
+            console.error('Camera error:', err);
+            showToast('Не удалось включить камеру. Проверьте разрешение или загрузите PDF файлом.', 'error');
+        }
+    }
+
+    function canvasToJpegBlob(canvas, quality) {
+        return new Promise(function(resolve, reject) {
+            canvas.toBlob(function(blob) {
+                if (blob) resolve(blob); else reject(new Error('Не удалось создать снимок'));
+            }, 'image/jpeg', quality || 0.92);
+        });
+    }
+
+    async function captureScannerPage() {
+        if (scanPages.length >= MAX_SCAN_PAGES) {
+            showToast('Достигнут лимит в ' + MAX_SCAN_PAGES + ' страниц за один скан.', 'error');
+            return;
+        }
+        if (!scannerVideo || !scannerVideo.videoWidth || !scannerVideo.videoHeight) {
+            showToast('Камера ещё не готова. Подождите секунду.', 'error');
+            return;
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = scannerVideo.videoWidth;
+        canvas.height = scannerVideo.videoHeight;
+        var ctx = canvas.getContext('2d', { alpha: false });
+        ctx.drawImage(scannerVideo, 0, 0, canvas.width, canvas.height);
+        try {
+            capturePageBtn.disabled = true;
+            capturePageBtn.textContent = 'Обрабатываю...';
+            var page = await prepareScanPage(canvas);
+            page.preview = URL.createObjectURL(page.blob);
+            scanPages.push(page);
+            refreshScannerPages();
+        } catch (err) {
+            console.error(err);
+            showToast('Не удалось снять страницу.', 'error');
+        } finally {
+            capturePageBtn.disabled = false;
+            capturePageBtn.textContent = 'Снять страницу';
+        }
+    }
+
+    function removeScannerPage(index) {
+        if (index < 0 || index >= scanPages.length) return;
+        if (scanPages[index].preview) URL.revokeObjectURL(scanPages[index].preview);
+        scanPages.splice(index, 1);
+        refreshScannerPages();
+    }
+
+    function concatBytes(parts) {
+        var total = parts.reduce(function(sum, p) { return sum + p.length; }, 0);
+        var out = new Uint8Array(total);
+        var pos = 0;
+        parts.forEach(function(p) { out.set(p, pos); pos += p.length; });
+        return out;
+    }
+
+    async function pagesToPdf(pages) {
+        // Минимальный PDF 1.4: каждый JPEG встраивается напрямую как DCTDecode.
+        var enc = new TextEncoder();
+        var parts = [];
+        var offsets = [];
+        var offset = 0;
+        function pushText(t) { var b = enc.encode(t); parts.push(b); offset += b.length; }
+        function pushBytes(b) { parts.push(b); offset += b.length; }
+        function beginObj(n) { offsets[n] = offset; pushText(n + ' 0 obj\n'); }
+        function endObj() { pushText('endobj\n'); }
+
+        var count = pages.length;
+        var objCount = 2 + count * 3;
+        pushText('%PDF-1.4\n');
+
+        beginObj(1);
+        pushText('<< /Type /Catalog /Pages 2 0 R >>\n');
+        endObj();
+
+        var kids = [];
+        for (var i = 0; i < count; i++) kids.push((3 + i * 3) + ' 0 R');
+        beginObj(2);
+        pushText('<< /Type /Pages /Count ' + count + ' /Kids [' + kids.join(' ') + '] >>\n');
+        endObj();
+
+        for (var i = 0; i < count; i++) {
+            var p = pages[i];
+            var pageObj = 3 + i * 3;
+            var imgObj = pageObj + 1;
+            var contentObj = pageObj + 2;
+            var portrait = p.height >= p.width;
+            var pageW = portrait ? 595.28 : 841.89;
+            var pageH = portrait ? 841.89 : 595.28;
+            var scale = Math.min(pageW / p.width, pageH / p.height);
+            var drawW = p.width * scale;
+            var drawH = p.height * scale;
+            var x = (pageW - drawW) / 2;
+            var y = (pageH - drawH) / 2;
+            var content = 'q\n' + drawW.toFixed(2) + ' 0 0 ' + drawH.toFixed(2) + ' ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' cm\n/Im' + i + ' Do\nQ\n';
+            var contentBytes = enc.encode(content);
+            var jpeg = new Uint8Array(await p.blob.arrayBuffer());
+
+            beginObj(pageObj);
+            pushText('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW.toFixed(2) + ' ' + pageH.toFixed(2) + '] /Resources << /XObject << /Im' + i + ' ' + imgObj + ' 0 R >> >> /Contents ' + contentObj + ' 0 R >>\n');
+            endObj();
+
+            beginObj(imgObj);
+            pushText('<< /Type /XObject /Subtype /Image /Width ' + p.width + ' /Height ' + p.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n');
+            pushBytes(jpeg);
+            pushText('\nendstream\n');
+            endObj();
+
+            beginObj(contentObj);
+            pushText('<< /Length ' + contentBytes.length + ' >>\nstream\n');
+            pushBytes(contentBytes);
+            pushText('endstream\n');
+            endObj();
+        }
+
+        var xrefOffset = offset;
+        pushText('xref\n0 ' + (objCount + 1) + '\n');
+        pushText('0000000000 65535 f \n');
+        for (var n = 1; n <= objCount; n++) {
+            pushText(String(offsets[n]).padStart(10, '0') + ' 00000 n \n');
+        }
+        pushText('trailer\n<< /Size ' + (objCount + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF\n');
+        return new Blob([concatBytes(parts)], { type: 'application/pdf' });
+    }
+
+    async function finishScanner() {
+        if (!scanPages.length) return;
+        finishScanBtn.disabled = true;
+        finishScanBtn.textContent = 'Создаю PDF...';
+        try {
+            var pdfBlob = await pagesToPdf(scanPages);
+            if (pdfBlob.size > MAX_UPLOAD) {
+                showToast('Готовый PDF получился больше 80 МБ. Удалите часть страниц или снимите их при лучшем освещении.', 'error');
+                return;
+            }
+            var file = new File([pdfBlob], 'scan-' + Date.now() + '.pdf', { type: 'application/pdf' });
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            dzLabel.textContent = file.name;
+            chosenName.textContent = file.name;
+            fileChosen.style.display = 'flex';
+            dropzone.style.borderColor = 'var(--accent)';
+            closeScanner();
+            showToast('PDF создан из ' + scanPages.length + ' стр. Теперь нажмите «Сдать работу».', 'success');
+        } catch (err) {
+            console.error('PDF build error:', err);
+            showToast('Не удалось создать PDF из снимков.', 'error');
+        } finally {
+            finishScanBtn.disabled = scanPages.length === 0;
+            finishScanBtn.textContent = 'Готово — создать PDF';
+        }
+    }
+
+    function clearScannerPages() {
+        scanPages.forEach(function(p) { if (p.preview) URL.revokeObjectURL(p.preview); });
+        scanPages = [];
+        refreshScannerPages();
+    }
+
+    if (openScannerBtn) openScannerBtn.addEventListener('click', openScanner);
+    if (closeScannerBtn) closeScannerBtn.addEventListener('click', closeScanner);
+    if (capturePageBtn) capturePageBtn.addEventListener('click', captureScannerPage);
+    if (finishScanBtn) finishScanBtn.addEventListener('click', finishScanner);
+    if (clearScanBtn) clearScanBtn.addEventListener('click', clearScannerPages);
+    if (scannerModal) scannerModal.addEventListener('click', function(e) { if (e.target === scannerModal) closeScanner(); });
+    window.addEventListener('beforeunload', stopScannerCamera);
+
+    function fmtMB(b) { return (b / 1024 / 1024).toFixed(1); }
+    // возвращает true, если файл слишком большой (и показывает сообщение)
+    function tooBig(file) {
+        if (file && file.size > MAX_UPLOAD) {
+            showToast('Файл ' + fmtMB(file.size) + ' МБ больше лимита 80 МБ. Сожмите PDF (например, уменьшите фото) и попробуйте снова.', 'error');
+            return true;
+        }
+        return false;
+    }
+
+    function isImageFile(file) {
+        return !!file && (/^image\/(jpeg|jpg|png|webp)$/i.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name || ''));
+    }
+
+    function showChosenFile(file) {
+        if (!fileInput || !file) return;
+        var dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        dzLabel.textContent = file.name;
+        chosenName.textContent = file.name + ' · ' + fmtMB(file.size) + ' МБ';
+        fileChosen.style.display = 'flex';
+        dropzone.style.borderColor = 'var(--accent)';
+    }
+
+    function readImageFile(file) {
+        return new Promise(function(resolve, reject) {
+            var url = URL.createObjectURL(file), img = new Image();
+            img.onload = function() {
+                URL.revokeObjectURL(url);
+                var canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                canvas.getContext('2d', { alpha: false }).drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas);
+            };
+            img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('Не удалось прочитать фото')); };
+            img.src = url;
+        });
+    }
+
+    async function convertPhotoToPdf(file) {
+        if (tooBig(file)) return;
+        var submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Обрабатываю фото...'; }
+        try {
+            var source = await readImageFile(file);
+            var page = await prepareScanPage(source);
+            var pdfBlob = await pagesToPdf([page]);
+            if (pdfBlob.size > MAX_UPLOAD) throw new Error('processed photo exceeds upload limit');
+            var pdfFile = new File([pdfBlob], (file.name || 'photo').replace(/\.[^.]+$/, '') + '-scan.pdf', { type: 'application/pdf' });
+            showChosenFile(pdfFile);
+            showToast(page.perspective ? 'Фото обработано: перспектива листа исправлена. Теперь нажмите «Сдать работу».' : 'Фото обработано: лист кадрирован и текст улучшен. Теперь нажмите «Сдать работу».', 'success');
+        } catch (err) {
+            console.error('Photo processing error:', err);
+            showToast('Не удалось обработать фото. Попробуйте другой файл или загрузите PDF.', 'error');
+        } finally {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Сдать работу'; }
+        }
+    }
+
+    function acceptSubmissionFile(file) {
+        if (!file || !fileInput) return;
+        if (isImageFile(file)) {
+            // Оригинал остаётся только в памяти браузера; в форму попадёт созданный PDF.
+            if (tooBig(file)) return;
+            showChosenFile(file);
+            convertPhotoToPdf(file);
+            return;
+        }
+        showChosenFile(file);
+        tooBig(file);
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files[0]) {
+                acceptSubmissionFile(this.files[0]);
+            }
+        });
+    }
+
+    if (dropzone) {
+        dropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        dropzone.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+        dropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (e.dataTransfer.files[0] && fileInput) {
+                acceptSubmissionFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    var form = document.getElementById('uploadForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // отсекаем слишком большой файл ДО загрузки — вместо пустой 413-страницы
+            if (fileInput && fileInput.files[0] && tooBig(fileInput.files[0])) {
+                e.preventDefault();
+                return;
+            }
+            var btn = document.getElementById('submitBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Загрузка...';
+            }
+        });
+    }
+
+    // Авторизация XHR через Bearer из localStorage + cookie как fallback.
+    var token = localStorage.getItem('token') || '';
+    function authHeaders(json) {
+        var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+        if (json) h['Content-Type'] = 'application/json';
+        return h;
+    }
+
+    function withdrawSubmission(id) {
+        if (!confirm('Отозвать работу? Файл будет удалён, вы сможете сдать заново.')) return;
+        fetch('/classroom/submissions/' + id, { method: 'DELETE', headers: authHeaders() })
+            .then(function(r) {
+                if (r.ok) { location.reload(); }
+                else { r.text().then(function(t) { showToast('Ошибка: ' + t, 'error'); }); }
+            });
+    }
+
+    {{if and .AllowComments .Submission}}
+    var SUBMISSION_ID = {{.Submission.ID}};
+    var cpMessages = document.getElementById('cpMessages');
+    var cpEmpty = document.getElementById('cpEmpty');
+    var cpCount = document.getElementById('cpCount');
+    var cpInput = document.getElementById('cpInput');
+
+    function loadComments() {
+        fetch('/classroom/submissions/' + SUBMISSION_ID + '/comments', { headers: authHeaders() })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                renderComments(data);
+            }).catch(function(){});
+    }
+
+    function renderComments(list) {
+        // remove old messages (keep empty placeholder)
+        var old = cpMessages.querySelectorAll('.cp-msg');
+        old.forEach(function(el){ el.remove(); });
+        if (!list || list.length === 0) {
+            cpEmpty.style.display = '';
+            cpCount.textContent = 'Нет сообщений';
+            return;
+        }
+        cpEmpty.style.display = 'none';
+        cpCount.textContent = list.length + ' ' + pluralRu(list.length, 'сообщение', 'сообщения', 'сообщений');
+        list.forEach(function(c) {
+            var div = document.createElement('div');
+            div.className = 'cp-msg' + (c.user_type === 'teacher' ? ' teacher' : '');
+            div.innerHTML =
+                '<div class="cp-msg-meta"><span class="name">' + esc(c.user_name) + '</span><span>' + esc(c.created_at) + '</span></div>' +
+                '<div class="cp-msg-text">' + esc(c.message) + '</div>';
+            cpMessages.appendChild(div);
+        });
+        cpMessages.scrollTop = cpMessages.scrollHeight;
+    }
+
+    function sendComment() {
+        var msg = cpInput.value.trim();
+        if (!msg) return;
+        var btn = document.getElementById('cpSendBtn');
+        btn.disabled = true;
+        fetch('/classroom/submissions/' + SUBMISSION_ID + '/comments', {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({message: msg})
+        }).then(function(r){
+            if (r.ok) {
+                cpInput.value = '';
+                loadComments();
+            } else {
+                r.text().then(function(t){ showToast('Ошибка: ' + t, 'error'); });
+            }
+        }).finally(function(){ btn.disabled = false; });
+    }
+
+    function pluralRu(n, one, few, many) {
+        var mod10 = n % 10, mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+        return many;
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    loadComments();
+    {{end}}
+</script>
+</body>
+</html>

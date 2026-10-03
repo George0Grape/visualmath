@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вступить в предмет — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root { --bg: #f4f5f7; --surface: #fff; --border: #e4e7ec; --text: #1a1d23; --muted: #6b7280; --accent: #2563eb; --accent-light: #eff6ff; --green: #16a34a; --green-light: #dcfce7; --radius: 12px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .card { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 24px rgba(0,0,0,.06); width: 100%; max-width: 380px; overflow: hidden; animation: fadeUp .35s ease both; }
+        .card-top { background: linear-gradient(135deg, #065f46, #16a34a); padding: 28px 32px; text-align: center; position: relative; overflow: hidden; }
+        .card-top::after { content: ''; position: absolute; right: -20px; top: -20px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.07); }
+        .card-icon { width: 52px; height: 52px; background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.3); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+        .card-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: white; margin-bottom: 4px; }
+        .card-sub { font-size: 13px; color: rgba(255,255,255,.7); }
+        .card-body { padding: 28px 32px 32px; }
+        .error-box { background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #991b1b; margin-bottom: 16px; }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .field input { width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 20px; letter-spacing: 5px; text-transform: uppercase; text-align: center; font-family: 'DM Sans', sans-serif; outline: none; transition: border .2s, box-shadow .2s; }
+        .field input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,.12); }
+        .btn-submit { width: 100%; padding: 12px; border: none; border-radius: 9px; background: var(--green); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .15s; }
+        .btn-submit:hover { background: #15803d; }
+        .btn-back { display: block; text-align: center; margin-top: 12px; padding: 10px; border-radius: 9px; border: 1.5px solid var(--border); color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; transition: all .15s; }
+        .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+    <div class="card">
+        <div class="card-top">
+            <div class="card-icon">
+                <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            </div>
+            <div class="card-title">Вступить в предмет</div>
+            <div class="card-sub">Введите код от преподавателя</div>
+        </div>
+        <div class="card-body">
+            {{if .Error}}
+            <div class="error-box">{{.Error}}</div>
+            {{end}}
+            <form method="POST" action="/classroom/join">
+                <div class="field">
+                    <label for="code">Инвайт-код</label>
+                    <input type="text" id="code" name="invite_code" placeholder="XXXXXX" maxlength="6" required autofocus>
+                </div>
+                <button type="submit" class="btn-submit">Вступить</button>
+            </form>
+            <a href="/classroom/subjects" class="btn-back">Назад к предметам</a>
+        </div>
+    </div>
+</body>
+</html>

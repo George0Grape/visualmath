@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аннотирование — {{.Assignment.Title}} — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#111827;color:#f9fafb;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Top bar */
+.top-bar{background:#1f2937;border-bottom:1px solid #374151;padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:100;}
+.top-bar h1{font-size:14px;font-weight:500;color:#e5e7eb;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border:none;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer;text-decoration:none;transition:opacity .15s;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+.btn:hover{opacity:.85;}
+.btn-back{background:#374151;color:#e5e7eb;}
+.btn-save{background:#16a34a;color:white;}
+.btn-clear{background:#dc2626;color:white;}
+
+/* Toolbar */
+.toolbar{background:#1f2937;padding:8px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;border-bottom:1px solid #374151;}
+.tool-btn{background:#374151;color:#e5e7eb;border:2px solid transparent;border-radius:7px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:600;transition:all .15s;font-family:'DM Sans',sans-serif;}
+.tool-btn:hover{background:#4b5563;}
+.tool-btn.active{border-color:#3b82f6;background:#1e40af;}
+.sep{width:1px;height:26px;background:#374151;flex-shrink:0;}
+.color-swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border .15s;}
+.color-swatch.active{border-color:#f9fafb;}
+label[for="colorPicker"]{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;cursor:pointer;overflow:hidden;}
+input[type=color]{width:26px;height:26px;border:none;background:none;cursor:pointer;padding:0;border-radius:50%;}
+.range-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;}
+input[type=range]{width:80px;cursor:pointer;accent-color:#3b82f6;}
+.page-nav{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:#e5e7eb;}
+.page-nav button{background:#374151;color:#e5e7eb;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:14px;font-weight:700;transition:background .15s;font-family:'DM Sans',sans-serif;}
+.page-nav button:hover{background:#4b5563;}
+.page-nav button:disabled{opacity:.35;cursor:default;}
+
+/* Main */
+.main{flex:1;display:flex;overflow:hidden;}
+.pdf-area{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px;background:#111827;}
+.canvas-container{position:relative;box-shadow:0 8px 40px rgba(0,0,0,.7);border-radius:2px;}
+#pdfCanvas{display:block;}
+#annotCanvas{position:absolute;top:0;left:0;cursor:crosshair;touch-action:none;}
+
+/* Side panel */
+.side-panel{width:288px;background:#1f2937;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid #374151;}
+/* Comments in side panel */
+.chat-section{border-top:1px solid #374151;display:flex;flex-direction:column;min-height:180px;max-height:280px;flex-shrink:0;}
+.chat-header{padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #374151;display:flex;justify-content:space-between;align-items:center;}
+.chat-msgs{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:8px;}
+.chat-msg{display:flex;flex-direction:column;gap:2px;}
+.chat-msg-meta{font-size:10px;color:#6b7280;display:flex;justify-content:space-between;}
+.chat-msg-meta .name{font-weight:600;color:#9ca3af;}
+.chat-msg-text{font-size:12px;color:#e5e7eb;line-height:1.5;padding:6px 8px;border-radius:6px;background:#111827;}
+.chat-msg.student .chat-msg-text{background:#1e3a5f;color:#bfdbfe;}
+.chat-empty{text-align:center;font-size:12px;color:#4b5563;padding:16px 0;}
+.chat-input-area{padding:8px 12px 10px;border-top:1px solid #374151;display:flex;gap:6px;align-items:flex-end;}
+.chat-ta{flex:1;background:#111827;color:#f3f4f6;border:1.5px solid #374151;border-radius:6px;padding:6px 8px;font-size:12px;resize:none;font-family:'DM Sans',sans-serif;height:32px;outline:none;transition:border .15s;}
+.chat-ta:focus{border-color:#3b82f6;}
+.chat-send{width:30px;height:30px;border-radius:6px;background:#2563eb;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
+.chat-send:hover{background:#1d4ed8;}
+.chat-send:disabled{opacity:.4;cursor:default;}
+.panel-title{padding:14px 18px;font-size:13px;font-weight:700;color:#f3f4f6;border-bottom:1px solid #374151;text-transform:uppercase;letter-spacing:.04em;}
+.comment-area{flex:1;padding:16px;display:flex;flex-direction:column;gap:10px;}
+.comment-area label{font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+textarea#comment{flex:1;background:#111827;color:#f3f4f6;border:1.5px solid #374151;border-radius:8px;padding:10px 12px;font-size:14px;resize:none;font-family:'DM Sans',sans-serif;line-height:1.5;outline:none;min-height:120px;transition:border .15s;}
+textarea#comment:focus{border-color:#3b82f6;}
+.save-area{padding:16px;border-top:1px solid #374151;display:flex;flex-direction:column;gap:8px;}
+.save-status{font-size:12px;color:#6b7280;text-align:center;}
+.save-status.ok{color:#16a34a;}
+.save-status.err{color:#dc2626;}
+
+/* Панель оценивания в редакторе */
+.grade-section{border-bottom:1px solid #374151;padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;}
+.grade-section .gs-title{font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;}
+.tg-row{display:flex;align-items:center;gap:8px;}
+.tg-row label{flex:1;font-size:12.5px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tg-input,#totalGrade{width:56px;background:#111827;color:#f3f4f6;border:1.5px solid #374151;border-radius:6px;padding:5px 7px;font-size:13px;text-align:center;font-family:'DM Sans',sans-serif;outline:none;transition:border .15s;}
+.tg-input:focus,#totalGrade:focus{border-color:#3b82f6;}
+.tg-max{font-size:12px;color:#6b7280;min-width:34px;}
+.tg-total{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#e5e7eb;padding-top:6px;border-top:1px solid #374151;}
+.tg-total strong{color:#22c55e;font-size:15px;}
+.btn-grade{background:#2563eb;color:#fff;width:100%;justify-content:center;padding:9px;}
+.grade-status{font-size:12px;text-align:center;color:#6b7280;min-height:14px;}
+.grade-status.ok{color:#22c55e;}
+.grade-status.err{color:#f87171;}
+
+/* Пины на канвасе */
+.pin-marker{position:absolute;transform:translate(-50%,-100%);cursor:pointer;z-index:10;pointer-events:all;}
+.pin-marker svg{filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));}
+/* Попап ввода пина */
+#pinPopup{position:fixed;background:#1f2937;border:1px solid #374151;border-radius:10px;padding:14px;width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:200;display:none;flex-direction:column;gap:8px;}
+#pinPopup textarea{background:#111827;color:#f3f4f6;border:1.5px solid #374151;border-radius:7px;padding:8px 10px;font-size:13px;resize:none;font-family:'DM Sans',sans-serif;height:80px;outline:none;}
+#pinPopup textarea:focus{border-color:#3b82f6;}
+#pinPopup .popup-btns{display:flex;gap:8px;}
+#pinPopup .popup-btns button{flex:1;padding:7px;border:none;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.popup-ok{background:#f59e0b;color:#fff;}
+.popup-cancel{background:#374151;color:#e5e7eb;}
+.popup-del{background:#b91c1c;color:#fff;}
+
+/* Annotation overlays: underline+comment, highlight+comment */
+.annot-overlay{position:absolute;z-index:10;pointer-events:all;}
+.annot-underline{height:4px;border-bottom:3px solid;cursor:pointer;}
+.annot-highlight{background:rgba(251,191,36,.28);border:2px solid rgba(251,191,36,.7);border-radius:2px;cursor:pointer;}
+.annot-tooltip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1f2937;border:1px solid #374151;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.5;color:#f3f4f6;white-space:pre-wrap;width:220px;word-break:break-word;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;display:none;z-index:20;}
+.annot-overlay:hover .annot-tooltip{display:block;}
+</style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<div class="top-bar">
+    <a href="/classroom/assignments/{{.Assignment.ID}}" class="btn btn-back">← Назад</a>
+    <h1>{{.Submission.StudentName}} — {{.Assignment.Title}}</h1>
+    <button class="btn btn-clear" onclick="clearPage()">Стереть страницу</button>
+</div>
+
+<div class="toolbar">
+    <button class="tool-btn active" id="toolPen" onclick="setTool('pen')">Ручка</button>
+    <button class="tool-btn" id="toolUnderline" onclick="setTool('underline')">Подчёрк.+💬</button>
+    <button class="tool-btn" id="toolHighlight" onclick="setTool('highlight')">🟡 Хайлайт</button>
+    <button class="tool-btn" id="toolEraser" onclick="setTool('eraser')">Ластик</button>
+    <button class="tool-btn" id="toolPin" onclick="setTool('pin')">📌 Пин</button>
+    <div class="sep"></div>
+    <button class="tool-btn" onclick="undo()" title="Ctrl+Z">↩ Отменить</button>
+    <div class="sep"></div>
+    <div class="color-swatch active" style="background:#ef4444;" data-color="#ef4444" onclick="setColor('#ef4444', this)"></div>
+    <div class="color-swatch" style="background:#22c55e;" data-color="#22c55e" onclick="setColor('#22c55e', this)"></div>
+    <div class="color-swatch" style="background:#3b82f6;" data-color="#3b82f6" onclick="setColor('#3b82f6', this)"></div>
+    <div class="color-swatch" style="background:#f59e0b;" data-color="#f59e0b" onclick="setColor('#f59e0b', this)"></div>
+    <div class="color-swatch" style="background:#a855f7;" data-color="#a855f7" onclick="setColor('#a855f7', this)"></div>
+    <label for="colorPicker" class="color-swatch" id="customSwatch" style="background:#ffffff;" title="Свой цвет">
+        <input type="color" id="colorPicker" value="#ffffff">
+    </label>
+    <div class="sep"></div>
+    <div class="range-wrap" id="sizeWrap">
+        <span>Размер:</span>
+        <input type="range" id="widthRange" min="1" max="24" value="3" oninput="currentWidth=+this.value; document.getElementById('widthVal').textContent=this.value">
+        <span id="widthVal">3</span>
+    </div>
+    <div class="range-wrap" id="eraserWrap" style="display:none;">
+        <span>Радиус:</span>
+        <input type="range" id="eraserRange" min="5" max="80" value="20" oninput="eraserRadius=+this.value; document.getElementById('eraserVal').textContent=this.value">
+        <span id="eraserVal">20</span>
+    </div>
+    <div class="page-nav">
+        <button id="prevBtn" onclick="prevPage()" disabled>‹</button>
+        <span>Стр. <strong id="pageNum">1</strong> / <strong id="totalPages">?</strong></span>
+        <button id="nextBtn" onclick="nextPage()">›</button>
+        <div class="sep"></div>
+        <button class="tool-btn" onclick="zoomOut()" title="Уменьшить (-)">−</button>
+        <span id="zoomLabel" style="font-size:12px;color:var(--muted);min-width:36px;text-align:center;">150%</span>
+        <button class="tool-btn" onclick="zoomIn()" title="Увеличить (+)">+</button>
+    </div>
+</div>
+
+<div class="main">
+    <div class="pdf-area">
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="pdfCanvas"></canvas>
+            <canvas id="annotCanvas"></canvas>
+        </div>
+    </div>
+    <div class="side-panel">
+        <div class="grade-section">
+            <div class="gs-title">Оценка</div>
+            {{if and (eq .Assignment.GradingMode "per_task") .Assignment.Tasks}}
+            {{range .Assignment.Tasks}}
+            <div class="tg-row">
+                <label title="{{if .Label}}{{.Label}}{{else}}Задача {{.TaskNumber}}{{end}}">{{if .Label}}{{.Label}}{{else}}Задача {{.TaskNumber}}{{end}}</label>
+                <input type="number" class="tg-input" data-task="{{.TaskNumber}}" min="0" max="{{.MaxScore}}" oninput="recalcTotal()">
+                <span class="tg-max">/ {{.MaxScore}}</span>
+            </div>
+            {{end}}
+            <div class="tg-total"><span>Итого</span><span><strong id="tgTotal">0</strong> / {{.Assignment.MaxScore}}</span></div>
+            {{else}}
+            <div class="tg-row">
+                <label>За работу</label>
+                <input type="number" id="totalGrade" min="0" max="{{.Assignment.MaxScore}}"{{if .Submission.Grade}} value="{{.Submission.Grade}}"{{end}}>
+                <span class="tg-max">/ {{.Assignment.MaxScore}}</span>
+            </div>
+            {{end}}
+            <button class="btn btn-grade" onclick="saveGrade()">Сохранить оценку</button>
+            <div class="grade-status" id="gradeStatus"></div>
+        </div>
+        <div class="panel-title">Комментарий к работе</div>
+        <div class="comment-area">
+            <label>Комментарий для студента</label>
+            <textarea id="comment" placeholder="Введите комментарий к работе студента...">{{.Submission.TeacherComment}}</textarea>
+        </div>
+        <div class="save-area">
+            <button class="btn btn-save" style="width:100%;justify-content:center;padding:11px;" onclick="saveAnnotations()">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v13a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/></svg>
+                Сохранить аннотации
+            </button>
+            <div class="save-status" id="saveStatus"></div>
+        </div>
+        {{if .Assignment.AllowComments}}
+        <div class="chat-section">
+            <div class="chat-header">
+                <span>Личный чат со студентом</span>
+                <span id="chatCount" style="font-weight:400;color:#6b7280;font-size:10px;"></span>
+            </div>
+            <div class="chat-msgs" id="chatMsgs">
+                <div class="chat-empty" id="chatEmpty">Нет сообщений</div>
+            </div>
+            <div class="chat-input-area">
+                <textarea class="chat-ta" id="chatInput" placeholder="Ответить студенту..."
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTeacherComment();}"></textarea>
+                <button class="chat-send" id="chatSendBtn" onclick="sendTeacherComment()">
+                    <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+                </button>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<div id="pinPopup">
+    <div id="pinPopupTitle" style="font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Комментарий-пин</div>
+    <textarea id="pinText" placeholder="Введите комментарий..."></textarea>
+    <div class="popup-btns">
+        <button class="popup-ok" id="pinOkBtn" onclick="confirmPin()">Добавить</button>
+        <button class="popup-del" id="pinDeleteBtn" onclick="deletePinFromPopup()" style="display:none">Удалить</button>
+        <button class="popup-cancel" onclick="cancelPin()">Отмена</button>
+    </div>
+</div>
+
+<script src="/static/vendor/pdfjs/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.js';
+
+const SUBMISSION_ID = {{.Submission.ID}};
+const PDF_URL = '/classroom/submissions/' + SUBMISSION_ID + '/pdf';
+// Авторизация XHR через Bearer из localStorage + cookie как fallback.
+const authToken = localStorage.getItem('token') || '';
+function authHeaders(json) {
+    var h = authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+}
+
+let pdfDoc = null, currentPage = 1, totalPages = 0;
+let currentTool = 'pen', currentColor = '#ef4444', currentWidth = 3;
+const pageStrokes = {};
+const pageDims = {};
+
+let drawing = false, currentStroke = null;
+let eraserRadius = 20, eraserCursorPos = null, eraserHistoryPushed = false;
+// Пины: {page, x, y, comment} в PDF-координатах
+const allPins = [];
+let pendingPin = null;
+// Индекс редактируемого пина в allPins (null = режим добавления нового)
+let editingPinIdx = null;
+// Аннотации с комментариями: {type:"underline"|"highlight", page, x1,y1,x2,y2, color, comment}
+const allAnnotations = [];
+let pendingAnnotation = null;
+// История для undo
+const history = [];
+
+const pdfCanvas = document.getElementById('pdfCanvas');
+const annotCanvas = document.getElementById('annotCanvas');
+const pdfCtx = pdfCanvas.getContext('2d');
+const aCtx = annotCanvas.getContext('2d');
+
+let currentScale = 1.5;
+const SCALE_MIN = 0.5, SCALE_MAX = 4.0, SCALE_STEP = 0.25;
+function zoomIn()  { if (currentScale < SCALE_MAX) { currentScale = Math.min(SCALE_MAX, +(currentScale + SCALE_STEP).toFixed(2)); renderPage(currentPage); updateZoomLabel(); } }
+function zoomOut() { if (currentScale > SCALE_MIN) { currentScale = Math.max(SCALE_MIN, +(currentScale - SCALE_STEP).toFixed(2)); renderPage(currentPage); updateZoomLabel(); } }
+function updateZoomLabel() { document.getElementById('zoomLabel').textContent = Math.round(currentScale * 100) + '%'; }
+
+pdfjsLib.getDocument(PDF_URL).promise.then(function(pdf) {
+    pdfDoc = pdf;
+    totalPages = pdf.numPages;
+    document.getElementById('totalPages').textContent = totalPages;
+    renderPage(1);
+}).catch(function(err) {
+    showToast('Ошибка загрузки PDF: ' + err.message, 'error');
+});
+
+// Подгружаем ранее сохранённую разметку, чтобы редактор открывался НЕ пустым и
+// повторное сохранение не затирало прошлые пины/аннотации/мазки.
+function loadExistingAnnotations() {
+    fetch('/classroom/submissions/' + SUBMISSION_ID + '/pins', { headers: authHeaders() })
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            (d.pins || []).forEach(function(p){ allPins.push(p); });
+            (d.annotations || []).forEach(function(a){ allAnnotations.push(a); });
+            (d.strokes || []).forEach(function(pg) {
+                pageStrokes[pg.page] = pg.strokes || [];
+                if (pg.page_width) pageDims[pg.page] = { width: pg.page_width, height: pg.page_height };
+            });
+            // если страница уже отрисована — обновим оверлеи
+            if (pdfDoc) { redrawAnnotations(); renderPinMarkers(); renderAnnotationOverlays(); }
+        }).catch(function(){});
+}
+loadExistingAnnotations();
+
+function renderPage(n) {
+    pdfDoc.getPage(n).then(function(page) {
+        const viewport = page.getViewport({ scale: currentScale });
+        pdfCanvas.width = annotCanvas.width = viewport.width;
+        pdfCanvas.height = annotCanvas.height = viewport.height;
+        pageDims[n] = { width: page.view[2], height: page.view[3] };
+        page.render({ canvasContext: pdfCtx, viewport: viewport }).promise.then(function() {
+            redrawAnnotations();
+            renderPinMarkers();
+            renderAnnotationOverlays();
+        });
+        document.getElementById('pageNum').textContent = n;
+        document.getElementById('prevBtn').disabled = (n <= 1);
+        document.getElementById('nextBtn').disabled = (n >= totalPages);
+    });
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; renderPage(currentPage); } }
+function nextPage() { if (currentPage < totalPages) { currentPage++; renderPage(currentPage); } }
+
+function setTool(t) {
+    currentTool = t;
+    document.querySelectorAll('.tool-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('tool' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('active');
+    annotCanvas.style.cursor = t === 'eraser' ? 'none' : 'crosshair';
+    document.getElementById('sizeWrap').style.display = (t === 'eraser' || t === 'pin' || t === 'underline' || t === 'highlight') ? 'none' : 'flex';
+    document.getElementById('eraserWrap').style.display = t === 'eraser' ? 'flex' : 'none';
+    if (t !== 'eraser') { eraserCursorPos = null; redrawAnnotations(); }
+}
+
+function setColor(c, el) {
+    currentColor = c;
+    document.querySelectorAll('.color-swatch').forEach(function(s) { s.classList.remove('active'); });
+    if (el) el.classList.add('active');
+}
+
+document.getElementById('colorPicker').addEventListener('input', function() {
+    setColor(this.value, document.getElementById('customSwatch'));
+    document.getElementById('customSwatch').style.background = this.value;
+});
+
+function getPos(e) {
+    const rect = annotCanvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return [(src.clientX - rect.left) * (annotCanvas.width / rect.width),
+            (src.clientY - rect.top)  * (annotCanvas.height / rect.height)];
+}
+
+function canvasToPdfPoint(x, y) {
+    const dims = pageDims[currentPage] || { width: 595, height: 842 };
+    return [x / pdfCanvas.width * dims.width, y / pdfCanvas.height * dims.height];
+}
+
+annotCanvas.addEventListener('mousedown',  startDraw);
+annotCanvas.addEventListener('mousemove',  moveDraw);
+annotCanvas.addEventListener('mouseup',    endDraw);
+annotCanvas.addEventListener('mouseleave', function() {
+    eraserCursorPos = null;
+    if (currentTool === 'eraser') redrawAnnotations();
+    endDraw();
+});
+annotCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); startDraw(e); }, { passive: false });
+annotCanvas.addEventListener('touchmove',  function(e) { e.preventDefault(); moveDraw(e);  }, { passive: false });
+annotCanvas.addEventListener('touchend',   endDraw);
+
+function startDraw(e) {
+    drawing = true;
+    const pos = getPos(e);
+    if (currentTool === 'eraser') {
+        eraserCursorPos = pos;
+        eraserHistoryPushed = false; // сбросить флаг при начале нового стирания
+        eraseAt(pos[0], pos[1]);
+        return;
+    }
+    if (currentTool === 'pin') {
+        drawing = false;
+        const pdfPt = canvasToPdfPoint(pos[0], pos[1]);
+        pendingPin = { page: currentPage, x: pdfPt[0], y: pdfPt[1] };
+        showPinPopup(e);
+        return;
+    }
+    const pdfPt = canvasToPdfPoint(pos[0], pos[1]);
+    currentStroke = { tool: currentTool, color: currentColor, width: currentWidth, opacity: 1.0, points: [pdfPt], _canvas: [pos] };
+    if (currentTool !== 'underline' && currentTool !== 'highlight') {
+        aCtx.beginPath();
+        aCtx.strokeStyle = currentColor;
+        aCtx.lineWidth = currentTool === 'marker' ? currentWidth * 3 : currentWidth;
+        aCtx.globalAlpha = currentTool === 'marker' ? 0.35 : 1.0;
+        aCtx.lineCap = 'round';
+        aCtx.lineJoin = 'round';
+        aCtx.moveTo(pos[0], pos[1]);
+    }
+}
+
+function moveDraw(e) {
+    const pos = getPos(e);
+    if (currentTool === 'eraser') {
+        eraserCursorPos = pos;
+        if (drawing) eraseAt(pos[0], pos[1]);
+        else redrawAnnotations();
+        return;
+    }
+    if (!drawing || !currentStroke) return;
+    const pdfPt = canvasToPdfPoint(pos[0], pos[1]);
+    currentStroke.points.push(pdfPt);
+    currentStroke._canvas.push(pos);
+    if (currentTool === 'highlight') {
+        aCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
+        redrawAnnotations();
+        const start = currentStroke._canvas[0];
+        aCtx.save();
+        aCtx.fillStyle = 'rgba(251,191,36,0.25)';
+        aCtx.strokeStyle = 'rgba(251,191,36,0.85)';
+        aCtx.lineWidth = 2;
+        aCtx.setLineDash([4, 3]);
+        const rx = Math.min(start[0], pos[0]), ry = Math.min(start[1], pos[1]);
+        const rw = Math.abs(pos[0] - start[0]), rh = Math.abs(pos[1] - start[1]);
+        aCtx.fillRect(rx, ry, rw, rh);
+        aCtx.strokeRect(rx, ry, rw, rh);
+        aCtx.restore();
+        return;
+    }
+    if (currentTool === 'underline') {
+        aCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
+        redrawAnnotations();
+        aCtx.save();
+        aCtx.strokeStyle = currentColor;
+        aCtx.lineWidth = currentWidth;
+        aCtx.globalAlpha = 1.0;
+        aCtx.lineCap = 'round';
+        aCtx.beginPath();
+        aCtx.moveTo(currentStroke._canvas[0][0], currentStroke._canvas[0][1]);
+        aCtx.lineTo(pos[0], currentStroke._canvas[0][1]);
+        aCtx.stroke();
+        aCtx.restore();
+    } else {
+        aCtx.lineTo(pos[0], pos[1]);
+        aCtx.stroke();
+    }
+}
+
+function endDraw(e) {
+    if (!drawing || !currentStroke) return;
+    drawing = false;
+
+    if (currentTool === 'underline') {
+        if (currentStroke._canvas && currentStroke._canvas.length >= 2) {
+            const startPt = currentStroke._canvas[0];
+            const endPt   = currentStroke._canvas[currentStroke._canvas.length - 1];
+            const pdfS = canvasToPdfPoint(startPt[0], startPt[1]);
+            const pdfE = canvasToPdfPoint(endPt[0], startPt[1]);
+            pendingAnnotation = { type: 'underline', page: currentPage, x1: pdfS[0], y1: pdfS[1], x2: pdfE[0], y2: pdfE[1], color: currentColor };
+        }
+        currentStroke = null;
+        if (pendingAnnotation && e && e.clientX !== undefined) {
+            showAnnotationPopup(e);
+        } else {
+            pendingAnnotation = null;
+            redrawAnnotations();
+        }
+        return;
+    }
+
+    if (currentTool === 'highlight') {
+        if (currentStroke._canvas && currentStroke._canvas.length >= 2) {
+            const startPt = currentStroke._canvas[0];
+            const endPt   = currentStroke._canvas[currentStroke._canvas.length - 1];
+            const pdfTL = canvasToPdfPoint(Math.min(startPt[0], endPt[0]), Math.min(startPt[1], endPt[1]));
+            const pdfBR = canvasToPdfPoint(Math.max(startPt[0], endPt[0]), Math.max(startPt[1], endPt[1]));
+            pendingAnnotation = { type: 'highlight', page: currentPage, x1: pdfTL[0], y1: pdfTL[1], x2: pdfBR[0], y2: pdfBR[1], color: '#fbbf24' };
+        }
+        currentStroke = null;
+        if (pendingAnnotation && e && e.clientX !== undefined) {
+            showAnnotationPopup(e);
+        } else {
+            pendingAnnotation = null;
+            redrawAnnotations();
+        }
+        return;
+    }
+
+    if (!pageStrokes[currentPage]) pageStrokes[currentPage] = [];
+    delete currentStroke._canvas;
+    if (currentStroke.points.length >= 2 || (currentStroke.tool !== 'pen' && currentStroke.tool !== 'marker')) {
+        pushHistory();
+        pageStrokes[currentPage].push(currentStroke);
+    }
+    currentStroke = null;
+    redrawAnnotations();
+}
+
+function redrawAnnotations() {
+    aCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
+    const strokes = pageStrokes[currentPage] || [];
+    strokes.forEach(function(s) {
+        if (!s.points || s.points.length < 2) return;
+        const dims = pageDims[currentPage] || { width: 595, height: 842 };
+        function toCanvas(pt) {
+            return [pt[0] / dims.width * pdfCanvas.width, pt[1] / dims.height * pdfCanvas.height];
+        }
+        aCtx.save();
+        aCtx.strokeStyle = s.color;
+        aCtx.lineCap = 'round';
+        aCtx.lineJoin = 'round';
+        if (s.tool === 'marker') {
+            aCtx.lineWidth = s.width * 3;
+            aCtx.globalAlpha = 0.35;
+        } else {
+            aCtx.lineWidth = s.width;
+            aCtx.globalAlpha = 1.0;
+        }
+        if (s.tool === 'underline') {
+            const c0 = toCanvas(s.points[0]);
+            const c1 = toCanvas(s.points[s.points.length - 1]);
+            aCtx.beginPath();
+            aCtx.moveTo(c0[0], c0[1]);
+            aCtx.lineTo(c1[0], c0[1]);
+            aCtx.stroke();
+        } else {
+            aCtx.beginPath();
+            const c0 = toCanvas(s.points[0]);
+            aCtx.moveTo(c0[0], c0[1]);
+            for (var i = 1; i < s.points.length; i++) {
+                const ci = toCanvas(s.points[i]);
+                aCtx.lineTo(ci[0], ci[1]);
+            }
+            aCtx.stroke();
+        }
+        aCtx.restore();
+    });
+    // Курсор ластика
+    if (currentTool === 'eraser' && eraserCursorPos) {
+        aCtx.save();
+        // Тёмный контур (виден на белом фоне)
+        aCtx.globalAlpha = 0.6;
+        aCtx.strokeStyle = '#000';
+        aCtx.lineWidth = 3;
+        aCtx.setLineDash([]);
+        aCtx.beginPath();
+        aCtx.arc(eraserCursorPos[0], eraserCursorPos[1], eraserRadius, 0, Math.PI * 2);
+        aCtx.stroke();
+        // Белый пунктир поверх
+        aCtx.globalAlpha = 0.9;
+        aCtx.strokeStyle = '#fff';
+        aCtx.lineWidth = 1.5;
+        aCtx.setLineDash([4, 3]);
+        aCtx.beginPath();
+        aCtx.arc(eraserCursorPos[0], eraserCursorPos[1], eraserRadius, 0, Math.PI * 2);
+        aCtx.stroke();
+        aCtx.restore();
+    }
+}
+
+function pushHistory() {
+    var snap = {
+        pageStrokes: JSON.parse(JSON.stringify(pageStrokes)),
+        pins: JSON.parse(JSON.stringify(allPins)),
+        annotations: JSON.parse(JSON.stringify(allAnnotations))
+    };
+    history.push(snap);
+    if (history.length > 50) history.shift();
+}
+
+function undo() {
+    if (history.length === 0) return;
+    var snap = history.pop();
+    Object.keys(pageStrokes).forEach(function(k){ delete pageStrokes[k]; });
+    Object.assign(pageStrokes, snap.pageStrokes);
+    allPins.length = 0;
+    snap.pins.forEach(function(p){ allPins.push(p); });
+    allAnnotations.length = 0;
+    (snap.annotations || []).forEach(function(a){ allAnnotations.push(a); });
+    redrawAnnotations();
+    renderPinMarkers();
+    renderAnnotationOverlays();
+}
+
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.keyCode === 90)) {
+        e.preventDefault();
+        undo();
+    }
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomIn(); }
+        if (e.key === '-')                  { e.preventDefault(); zoomOut(); }
+    }
+});
+
+function eraseAt(x, y) {
+    if (!pageStrokes[currentPage] || pageStrokes[currentPage].length === 0) {
+        redrawAnnotations();
+        return;
+    }
+    if (!eraserHistoryPushed) {
+        pushHistory();
+        eraserHistoryPushed = true;
+    }
+    const dims = pageDims[currentPage] || { width: 595, height: 842 };
+    pageStrokes[currentPage] = pageStrokes[currentPage].filter(function(stroke) {
+        return !stroke.points.some(function(pt) {
+            var cx = pt[0] / dims.width * pdfCanvas.width;
+            var cy = pt[1] / dims.height * pdfCanvas.height;
+            var dx = cx - x, dy = cy - y;
+            return Math.sqrt(dx * dx + dy * dy) < eraserRadius;
+        });
+    });
+    redrawAnnotations();
+}
+
+function showPinPopup(e) {
+    document.getElementById('pinPopupTitle').textContent = 'Комментарий-пин';
+    showPopupAt(e);
+}
+
+function showAnnotationPopup(e) {
+    document.getElementById('pinPopupTitle').textContent =
+        pendingAnnotation.type === 'underline' ? 'Комментарий к подчёркиванию' : 'Комментарий к выделению';
+    showPopupAt(e);
+}
+
+// Позиционирует попап рядом с курсором/маркером и ставит фокус в поле
+function positionPopup(e) {
+    var popup = document.getElementById('pinPopup');
+    popup.style.display = 'flex';
+    var x = e.clientX + 10, y = e.clientY + 10;
+    if (x + 220 > window.innerWidth) x = e.clientX - 230;
+    if (y + 160 > window.innerHeight) y = e.clientY - 170;
+    popup.style.left = x + 'px';
+    popup.style.top  = y + 'px';
+    setTimeout(function(){ document.getElementById('pinText').focus(); }, 50);
+}
+
+function showPopupAt(e) {
+    // режим добавления: чистим поле, прячем «Удалить», кнопка — «Добавить»
+    editingPinIdx = null;
+    document.getElementById('pinText').value = '';
+    document.getElementById('pinOkBtn').textContent = 'Добавить';
+    document.getElementById('pinDeleteBtn').style.display = 'none';
+    positionPopup(e);
+}
+
+// Открывает попап для редактирования существующего пина
+function openPinEditor(idx, e) {
+    editingPinIdx = idx;
+    pendingPin = null;
+    pendingAnnotation = null;
+    document.getElementById('pinPopupTitle').textContent = 'Редактировать пин';
+    document.getElementById('pinText').value = allPins[idx].comment || '';
+    document.getElementById('pinOkBtn').textContent = 'Сохранить';
+    document.getElementById('pinDeleteBtn').style.display = 'block';
+    positionPopup(e);
+}
+
+function deletePinFromPopup() {
+    if (editingPinIdx == null) return;
+    pushHistory();
+    allPins.splice(editingPinIdx, 1);
+    editingPinIdx = null;
+    document.getElementById('pinPopup').style.display = 'none';
+    renderPinMarkers();
+}
+
+function confirmPin() {
+    var text = document.getElementById('pinText').value.trim();
+    // Редактирование существующего пина
+    if (editingPinIdx != null) {
+        if (!text) { cancelPin(); return; }
+        pushHistory();
+        allPins[editingPinIdx].comment = text;
+        editingPinIdx = null;
+        document.getElementById('pinPopup').style.display = 'none';
+        renderPinMarkers();
+        return;
+    }
+    if (!text) { cancelPin(); return; }
+    pushHistory();
+    document.getElementById('pinPopup').style.display = 'none';
+    if (pendingAnnotation) {
+        pendingAnnotation.comment = text;
+        allAnnotations.push(pendingAnnotation);
+        pendingAnnotation = null;
+        redrawAnnotations();
+        renderAnnotationOverlays();
+    } else if (pendingPin) {
+        pendingPin.comment = text;
+        allPins.push(pendingPin);
+        pendingPin = null;
+        renderPinMarkers();
+    }
+}
+
+function cancelPin() {
+    pendingPin = null;
+    pendingAnnotation = null;
+    editingPinIdx = null;
+    document.getElementById('pinPopup').style.display = 'none';
+    redrawAnnotations();
+    renderAnnotationOverlays();
+}
+
+function renderPinMarkers() {
+    document.querySelectorAll('.pin-marker').forEach(function(p){ p.remove(); });
+    const dims = pageDims[currentPage] || { width: 595, height: 842 };
+    allPins.filter(function(p){ return p.page === currentPage; }).forEach(function(pin, idx) {
+        var cx = pin.x / dims.width  * pdfCanvas.width;
+        var cy = pin.y / dims.height * pdfCanvas.height;
+        var el = document.createElement('div');
+        el.className = 'pin-marker';
+        el.style.left = cx + 'px';
+        el.style.top  = cy + 'px';
+        el.dataset.idx = allPins.indexOf(pin);
+        el.title = pin.comment + '\n(клик — изменить, двойной клик — удалить)';
+        el.innerHTML =
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="#f59e0b" stroke="#92400e" stroke-width="1.5">' +
+            '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>' +
+            '<circle cx="12" cy="9" r="2.5" fill="#fff" stroke="none"/></svg>';
+        // Одиночный клик — редактировать, двойной — удалить. Откладываем
+        // обработку клика на 250 мс, чтобы не открывать редактор при двойном клике.
+        var clickTimer = null;
+        el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (clickTimer) return;
+            clickTimer = setTimeout(function() {
+                clickTimer = null;
+                openPinEditor(+el.dataset.idx, e);
+            }, 250);
+        });
+        el.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+            pushHistory();
+            allPins.splice(+el.dataset.idx, 1);
+            renderPinMarkers();
+        });
+        document.getElementById('canvasContainer').appendChild(el);
+    });
+}
+
+function clearPage() {
+    vmConfirm({
+        title: 'Очистить страницу?',
+        message: 'Все аннотации и пины на этой странице будут удалены.',
+        danger: true,
+        okText: 'Очистить',
+        onConfirm: function() {
+            delete pageStrokes[currentPage];
+            aCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
+            for (var i = allPins.length - 1; i >= 0; i--) {
+                if (allPins[i].page === currentPage) allPins.splice(i, 1);
+            }
+            for (var i = allAnnotations.length - 1; i >= 0; i--) {
+                if (allAnnotations[i].page === currentPage) allAnnotations.splice(i, 1);
+            }
+            renderPinMarkers();
+            renderAnnotationOverlays();
+        }
+    });
+}
+
+function renderAnnotationOverlays() {
+    document.querySelectorAll('.annot-overlay').forEach(function(el){ el.remove(); });
+    const dims = pageDims[currentPage] || { width: 595, height: 842 };
+    allAnnotations.filter(function(a){ return a.page === currentPage; }).forEach(function(ann) {
+        var cx1 = ann.x1 / dims.width  * pdfCanvas.width;
+        var cy1 = ann.y1 / dims.height * pdfCanvas.height;
+        var cx2 = ann.x2 / dims.width  * pdfCanvas.width;
+        var cy2 = ann.y2 / dims.height * pdfCanvas.height;
+
+        var el = document.createElement('div');
+        el.className = 'annot-overlay';
+        el.dataset.annIdx = allAnnotations.indexOf(ann);
+
+        if (ann.type === 'underline') {
+            el.classList.add('annot-underline');
+            el.style.left  = Math.min(cx1, cx2) + 'px';
+            el.style.top   = cy1 + 'px';
+            el.style.width = Math.abs(cx2 - cx1) + 'px';
+            el.style.borderBottomColor = ann.color || '#ef4444';
+        } else {
+            el.classList.add('annot-highlight');
+            el.style.left   = Math.min(cx1, cx2) + 'px';
+            el.style.top    = Math.min(cy1, cy2) + 'px';
+            el.style.width  = Math.abs(cx2 - cx1) + 'px';
+            el.style.height = Math.abs(cy2 - cy1) + 'px';
+        }
+
+        var tip = document.createElement('div');
+        tip.className = 'annot-tooltip';
+        tip.textContent = ann.comment;
+        el.appendChild(tip);
+
+        el.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            pushHistory();
+            allAnnotations.splice(+el.dataset.annIdx, 1);
+            renderAnnotationOverlays();
+        });
+
+        document.getElementById('canvasContainer').appendChild(el);
+    });
+}
+
+function saveAnnotations() {
+    const pages = [];
+    const pagesIncluded = new Set();
+    for (var pg in pageStrokes) {
+        const strokes = pageStrokes[pg];
+        if (!strokes || strokes.length === 0) continue;
+        const dims = pageDims[parseInt(pg)] || { width: 595, height: 842 };
+        pages.push({ page: parseInt(pg), page_width: dims.width, page_height: dims.height, strokes: strokes });
+        pagesIncluded.add(parseInt(pg));
+    }
+    // Добавляем страницы только с аннотациями (без обычных штрихов)
+    allAnnotations.forEach(function(ann) {
+        if (!pagesIncluded.has(ann.page)) {
+            const dims = pageDims[ann.page] || { width: 595, height: 842 };
+            pages.push({ page: ann.page, page_width: dims.width, page_height: dims.height, strokes: [] });
+            pagesIncluded.add(ann.page);
+        }
+    });
+    const statusEl = document.getElementById('saveStatus');
+    statusEl.textContent = 'Сохранение...';
+    statusEl.className = 'save-status';
+    var bodyData = { pages: pages, comment: document.getElementById('comment').value, pins: allPins, annotations: allAnnotations };
+    fetch('/classroom/submissions/' + SUBMISSION_ID + '/annotate', {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify(bodyData)
+    }).then(function(resp) {
+        if (!resp.ok) return resp.text().then(function(t) { throw new Error(t); });
+        return resp.json();
+    }).then(function() {
+        statusEl.textContent = 'Сохранено!';
+        statusEl.className = 'save-status ok';
+        setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    }).catch(function(err) {
+        statusEl.textContent = 'Ошибка: ' + err.message;
+        statusEl.className = 'save-status err';
+    });
+}
+
+// --- Оценивание прямо в редакторе (не выходя из работы) ---
+var TASK_SCORES = {{.TaskScoresJSON}};
+function recalcTotal() {
+    var sum = 0;
+    document.querySelectorAll('.tg-input').forEach(function(i){ sum += (parseInt(i.value, 10) || 0); });
+    var el = document.getElementById('tgTotal');
+    if (el) el.textContent = sum;
+}
+function saveGrade() {
+    var body;
+    var perTask = document.querySelectorAll('.tg-input').length > 0;
+    if (perTask) {
+        var tg = {};
+        document.querySelectorAll('.tg-input').forEach(function(i){ tg[i.dataset.task] = (parseInt(i.value, 10) || 0); });
+        body = { task_grades: tg };
+    } else {
+        var g = document.getElementById('totalGrade');
+        body = { grade: (parseInt(g.value, 10) || 0) };
+    }
+    var st = document.getElementById('gradeStatus');
+    st.textContent = 'Сохранение...'; st.className = 'grade-status';
+    fetch('/classroom/submissions/' + SUBMISSION_ID + '/grade', {
+        method: 'POST', headers: authHeaders(true), body: JSON.stringify(body)
+    }).then(function(r){ if (!r.ok) return r.text().then(function(t){ throw new Error(t); }); return r.json(); })
+      .then(function(res){
+          st.textContent = 'Оценка сохранена: ' + res.grade;
+          st.className = 'grade-status ok';
+          setTimeout(function(){ st.textContent = ''; }, 3000);
+      })
+      .catch(function(e){ st.textContent = 'Ошибка: ' + e.message; st.className = 'grade-status err'; });
+}
+// предзаполнение полей задач ранее сохранёнными баллами
+(function(){
+    if (TASK_SCORES && typeof TASK_SCORES === 'object') {
+        document.querySelectorAll('.tg-input').forEach(function(inp){
+            var v = TASK_SCORES[inp.dataset.task];
+            if (v !== undefined && v !== null) inp.value = v;
+        });
+        recalcTotal();
+    }
+})();
+
+{{if .Assignment.AllowComments}}
+(function() {
+    var SID = {{.Submission.ID}};
+    function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function loadChat() {
+        fetch('/classroom/submissions/' + SID + '/comments', { headers: authHeaders() })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                var msgs = document.getElementById('chatMsgs');
+                var empty = document.getElementById('chatEmpty');
+                var count = document.getElementById('chatCount');
+                var old = msgs.querySelectorAll('.chat-msg');
+                old.forEach(function(el){ el.remove(); });
+                if (!data || data.length === 0) {
+                    empty.style.display = '';
+                    count.textContent = '';
+                    return;
+                }
+                empty.style.display = 'none';
+                count.textContent = data.length + ' сообщ.';
+                data.forEach(function(c) {
+                    var div = document.createElement('div');
+                    div.className = 'chat-msg ' + c.user_type;
+                    div.innerHTML =
+                        '<div class="chat-msg-meta"><span class="name">' + escHtml(c.user_name) + '</span><span>' + escHtml(c.created_at) + '</span></div>' +
+                        '<div class="chat-msg-text">' + escHtml(c.message) + '</div>';
+                    msgs.appendChild(div);
+                });
+                msgs.scrollTop = msgs.scrollHeight;
+            }).catch(function(){});
+    }
+
+    window.sendTeacherComment = function() {
+        var ta = document.getElementById('chatInput');
+        var msg = ta.value.trim();
+        if (!msg) return;
+        var btn = document.getElementById('chatSendBtn');
+        btn.disabled = true;
+        fetch('/classroom/submissions/' + SID + '/comments', {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({message: msg})
+        }).then(function(r){
+            if (r.ok) { ta.value = ''; loadChat(); }
+            else { r.text().then(function(t){ showToast('Ошибка: ' + t, 'error'); }); }
+        }).finally(function(){ btn.disabled = false; });
+    };
+
+    loadChat();
+})();
+{{end}}
+</script>
+</body>
+</html>

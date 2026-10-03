@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Просмотр работы — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#111827;color:#f9fafb;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.top-bar{background:#1f2937;border-bottom:1px solid #374151;padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.top-bar h1{font-size:14px;font-weight:500;color:#e5e7eb;flex:1;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border:none;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer;text-decoration:none;transition:opacity .15s;font-family:'DM Sans',sans-serif;}
+.btn:hover{opacity:.85;}
+.btn-back{background:#374151;color:#e5e7eb;}
+.btn-dl{background:#16a34a;color:#fff;}
+.main{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px;background:#111827;}
+/* inline-block + max-width:100% — контейнер обёртывает canvas и сжимается
+   вместе с ним на узком экране; оверлеи внутри позиционируются в % → не уезжают */
+.canvas-wrap{position:relative;display:inline-block;max-width:100%;}
+#pdfCanvas{display:block;max-width:100%;height:auto;box-shadow:0 8px 40px rgba(0,0,0,.7);border-radius:2px;}
+.page-nav{display:flex;align-items:center;gap:8px;font-size:13px;color:#e5e7eb;}
+.page-nav button{background:#374151;color:#e5e7eb;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:14px;font-weight:700;transition:background .15s;font-family:'DM Sans',sans-serif;}
+.page-nav button:hover{background:#4b5563;}
+.page-nav button:disabled{opacity:.35;cursor:default;}
+
+/* Пины */
+.pin{position:absolute;width:24px;height:24px;transform:translate(-50%,-100%);cursor:pointer;z-index:10;}
+.pin svg{filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));}
+.pin-tooltip{
+    position:absolute;
+    bottom:28px;left:50%;transform:translateX(-50%);
+    background:#1f2937;border:1px solid #374151;border-radius:8px;
+    padding:8px 12px;font-size:13px;line-height:1.5;color:#f3f4f6;
+    white-space:pre-wrap;width:220px;word-break:break-word;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);
+    pointer-events:none;display:none;z-index:20;
+}
+.pin:hover .pin-tooltip{display:block;}
+/* Annotation overlays */
+.annot-overlay{position:absolute;z-index:10;pointer-events:all;}
+.annot-underline{height:4px;border-bottom:3px solid;cursor:default;}
+.annot-highlight{background:rgba(251,191,36,.28);border:2px solid rgba(251,191,36,.7);border-radius:2px;cursor:default;}
+.annot-tooltip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1f2937;border:1px solid #374151;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.5;color:#f3f4f6;white-space:pre-wrap;width:220px;word-break:break-word;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;display:none;z-index:20;}
+.annot-overlay:hover .annot-tooltip{display:block;}
+</style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<div class="top-bar">
+    <a href="/classroom/assignments/{{.AssignmentID}}" class="btn btn-back">← Назад</a>
+    <h1>Работа с аннотациями преподавателя</h1>
+    <div class="page-nav">
+        <button id="prevBtn" onclick="prevPage()" disabled>‹</button>
+        <span>Стр. <strong id="pageNum">1</strong> / <strong id="totalPages">?</strong></span>
+        <button id="nextBtn" onclick="nextPage()">›</button>
+        <button onclick="zoomOut()" style="padding:4px 10px;background:var(--surface,#fff);border:1px solid var(--border,#e4e7ec);border-radius:6px;cursor:pointer;font-size:15px;" title="Уменьшить (-)">−</button>
+        <span id="zoomLabel" style="font-size:12px;color:#6b7280;min-width:36px;text-align:center;">150%</span>
+        <button onclick="zoomIn()" style="padding:4px 10px;background:var(--surface,#fff);border:1px solid var(--border,#e4e7ec);border-radius:6px;cursor:pointer;font-size:15px;" title="Увеличить (+)">+</button>
+    </div>
+    <a id="dlBtn" href="#" class="btn btn-dl" download>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Скачать
+    </a>
+</div>
+<div class="main">
+    <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="pdfCanvas"></canvas>
+    </div>
+</div>
+
+<script src="/static/vendor/pdfjs/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.js';
+
+const SUBMISSION_ID = {{.SubmissionID}};
+const PDF_URL = '/classroom/submissions/' + SUBMISSION_ID + '/annotated';
+const PINS_URL = '/classroom/submissions/' + SUBMISSION_ID + '/pins';
+
+document.getElementById('dlBtn').href = PDF_URL;
+
+let pdfDoc = null, currentPage = 1, totalPages = 0;
+let currentScale = 1.5;
+const SCALE_MIN = 0.5, SCALE_MAX = 4.0, SCALE_STEP = 0.25;
+function zoomIn()  { if (currentScale < SCALE_MAX) { currentScale = Math.min(SCALE_MAX, +(currentScale + SCALE_STEP).toFixed(2)); renderPage(currentPage); document.getElementById('zoomLabel').textContent = Math.round(currentScale*100)+'%'; } }
+function zoomOut() { if (currentScale > SCALE_MIN) { currentScale = Math.max(SCALE_MIN, +(currentScale - SCALE_STEP).toFixed(2)); renderPage(currentPage); document.getElementById('zoomLabel').textContent = Math.round(currentScale*100)+'%'; } }
+let allPins = [], allAnnotations = [], pageDims = {};
+const pdfCanvas = document.getElementById('pdfCanvas');
+const pdfCtx = pdfCanvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+
+Promise.all([
+    pdfjsLib.getDocument(PDF_URL).promise,
+    fetch(PINS_URL).then(function(r){ return r.json(); }).catch(function(){ return []; })
+]).then(function(results) {
+    pdfDoc = results[0];
+    var pinsData = results[1] || {};
+    allPins = Array.isArray(pinsData) ? pinsData : (pinsData.pins || []);
+    allAnnotations = (pinsData.annotations || []);
+    totalPages = pdfDoc.numPages;
+    document.getElementById('totalPages').textContent = totalPages;
+    renderPage(1);
+}).catch(function(err) {
+    showToast('Ошибка загрузки: ' + err.message, 'error');
+});
+
+function renderPage(n) {
+    pdfDoc.getPage(n).then(function(page) {
+        const viewport = page.getViewport({ scale: currentScale });
+        pdfCanvas.width  = viewport.width;
+        pdfCanvas.height = viewport.height;
+        pageDims[n] = { width: page.view[2], height: page.view[3] };
+        // ширину/высоту wrap НЕ фиксируем в px — пусть обёртывает (возможно
+        // сжатый на мобильном) canvas; оверлеи позиционируются в % от wrap
+        page.render({ canvasContext: pdfCtx, viewport: viewport }).promise.then(function() {
+            renderPins(n);
+            renderAnnotations(n);
+        });
+        document.getElementById('pageNum').textContent = n;
+        document.getElementById('prevBtn').disabled = (n <= 1);
+        document.getElementById('nextBtn').disabled = (n >= totalPages);
+    });
+    // Убрать старые пины и аннотации
+    wrap.querySelectorAll('.pin').forEach(function(p){ p.remove(); });
+    wrap.querySelectorAll('.annot-overlay').forEach(function(el){ el.remove(); });
+}
+
+function renderPins(page) {
+    const dims = pageDims[page] || { width: 595, height: 842 };
+    const pagePins = allPins.filter(function(p){ return p.page === page; });
+    pagePins.forEach(function(pin) {
+        var el = document.createElement('div');
+        el.className = 'pin';
+        // проценты от wrap → позиция верна при любом масштабе canvas
+        el.style.left = (pin.x / dims.width  * 100) + '%';
+        el.style.top  = (pin.y / dims.height * 100) + '%';
+        el.innerHTML =
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="#f59e0b" stroke="#92400e" stroke-width="1.5">' +
+            '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>' +
+            '<circle cx="12" cy="9" r="2.5" fill="#fff" stroke="none"/></svg>' +
+            '<div class="pin-tooltip">' + escHtml(pin.comment) + '</div>';
+        wrap.appendChild(el);
+    });
+}
+
+function renderAnnotations(page) {
+    const dims = pageDims[page] || { width: 595, height: 842 };
+    allAnnotations.filter(function(a){ return a.page === page; }).forEach(function(ann) {
+        // всё в процентах от wrap — масштабируется вместе с canvas
+        var lPct = Math.min(ann.x1, ann.x2) / dims.width  * 100;
+        var wPct = Math.abs(ann.x2 - ann.x1) / dims.width  * 100;
+
+        var el = document.createElement('div');
+        el.className = 'annot-overlay';
+        if (ann.type === 'underline') {
+            el.classList.add('annot-underline');
+            el.style.left  = lPct + '%';
+            el.style.top   = (ann.y1 / dims.height * 100) + '%';
+            el.style.width = wPct + '%';
+            el.style.borderBottomColor = ann.color || '#ef4444';
+        } else {
+            el.classList.add('annot-highlight');
+            el.style.left   = lPct + '%';
+            el.style.top    = (Math.min(ann.y1, ann.y2) / dims.height * 100) + '%';
+            el.style.width  = wPct + '%';
+            el.style.height = (Math.abs(ann.y2 - ann.y1) / dims.height * 100) + '%';
+        }
+        var tip = document.createElement('div');
+        tip.className = 'annot-tooltip';
+        tip.textContent = ann.comment;
+        el.appendChild(tip);
+        wrap.appendChild(el);
+    });
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; renderPage(currentPage); } }
+function nextPage() { if (currentPage < totalPages) { currentPage++; renderPage(currentPage); } }
+
+document.addEventListener('keydown', function(e) {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomIn(); }
+        if (e.key === '-')                  { e.preventDefault(); zoomOut(); }
+    }
+});
+</script>
+</body>
+</html>

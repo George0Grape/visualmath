@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - VisualMath</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .register-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .register-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .register-header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .register-form input,
+        .register-form select {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .register-form button {
+            width: 100%;
+            padding: 15px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .register-form button:hover {
+            background: #27ae60;
+        }
+        
+        .form-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #27ae60;
+            background: #d5f4e6;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .student-field {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>📝 Регистрация</h1>
+            <p>Создайте учетную запись</p>
+        </div>
+        
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+        
+        <form class="register-form" id="registerForm">
+            <div class="form-group">
+                <input type="text" id="login" name="login" placeholder="Логин*" required>
+            </div>
+            
+            <div class="form-group">
+                <input type="password" id="password" name="password" placeholder="Пароль*" required>
+            </div>
+            
+            <div class="form-group">
+                <input type="text" id="full_name" name="full_name" placeholder="ФИО*" required>
+            </div>
+            
+            <div class="form-group">
+                <input type="email" id="email" name="email" placeholder="Email*" required>
+            </div>
+            
+            <div class="form-group">
+                <select id="user_type" name="user_type" required onchange="toggleGroupField()">
+                    <option value="">Выберите тип пользователя*</option>
+                    <option value="student">Студент</option>
+                    <option value="teacher">Преподаватель</option>
+                </select>
+            </div>
+            
+            <div class="form-group student-field" id="groupField">
+                <input type="text" id="group_number" name="group_number" placeholder="Номер группы*">
+            </div>
+            
+            <button type="submit">Зарегистрироваться</button>
+        </form>
+        
+        <div class="form-links">
+            <p>Уже есть аккаунт? <a href="/login">Войти</a></p>
+            <p><a href="/">Вернуться на главную</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Показываем/скрываем поле группы для студентов
+        function toggleGroupField() {
+            const userType = document.getElementById('user_type').value;
+            const groupField = document.getElementById('groupField');
+            
+            if (userType === 'student') {
+                groupField.style.display = 'block';
+                document.getElementById('group_number').required = true;
+            } else {
+                groupField.style.display = 'none';
+                document.getElementById('group_number').required = false;
+            }
+        }
+        
+        // Обработка формы регистрации
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Очищаем сообщения
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            // Собираем данные формы
+            const formData = {
+                login: document.getElementById('login').value,
+                password: document.getElementById('password').value,
+                full_name: document.getElementById('full_name').value,
+                email: document.getElementById('email').value,
+                user_type: document.getElementById('user_type').value,
+                group_number: document.getElementById('group_number').value
+            };
+            
+            try {
+                // Отправляем запрос на сервер
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Успешная регистрация
+                    document.getElementById('successMessage').textContent = 
+                        '✅ Регистрация успешна! Проверьте email для подтверждения.';
+                    document.getElementById('successMessage').style.display = 'block';
+                    
+                    // Очищаем форму
+                    document.getElementById('registerForm').reset();
+                    
+                    // Перенаправляем на страницу входа через 3 секунды
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 3000);
+                    
+                } else {
+                    // Ошибка регистрации
+                    document.getElementById('errorMessage').textContent = 
+                        '❌ Ошибка: ' + (result.message || 'Проверьте введенные данные');
+                    document.getElementById('errorMessage').style.display = 'block';
+                }
+                
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 
+                    '❌ Ошибка сети: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

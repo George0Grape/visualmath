@@ -1,0 +1,33 @@
+# Binaries
+*.exe
+*.exe~
+visualmath
+visualmath_linux
+server.exe
+
+# Database
+*.db
+*.db.bak
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Environment
+.env
+.env.local
+
+# Uploads (user files, PDFs)
+uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go test artifacts
+*.test
+*.out
+
+# Misc
+*.txt

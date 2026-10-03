@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты сессии — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7; --surface: #fff; --border: #e4e7ec;
+            --text: #1a1d23; --muted: #6b7280; --subtle: #9ca3af;
+            --accent: #2563eb; --accent-light: #eff6ff;
+            --green: #16a34a; --green-light: #dcfce7;
+            --red: #dc2626; --red-light: #fee2e2;
+            --sidebar-w: 260px; --topbar-h: 58px; --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,.10), 0 16px 40px rgba(0,0,0,.06);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; }
+        .topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+        .topbar-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); text-decoration: none; transition: color .15s; }
+        .topbar-back:hover { color: var(--accent); }
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .btn-reload { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--surface); border: 1.5px solid var(--border); color: var(--muted); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+        .btn-reload:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-reload:disabled { opacity: .5; cursor: not-allowed; }
+        .last-updated { font-size: 12px; color: var(--subtle); }
+
+        .sidebar { position: fixed; top: var(--topbar-h); left: 0; bottom: 0; width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+        .sb-section { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--subtle); padding: 14px 10px 5px; }
+        .sb-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--muted); text-decoration: none; transition: all .15s; }
+        .sb-link:hover { background: var(--bg); color: var(--text); }
+        .sb-link svg { flex-shrink: 0; opacity: .75; }
+        .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+        .main { margin-left: var(--sidebar-w); padding-top: calc(var(--topbar-h) + 32px); padding-bottom: 60px; padding-left: 36px; padding-right: 36px; }
+
+        .page-title { font-family: 'Lora', serif; font-size: 24px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .page-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+
+        /* Module block */
+        .module-block { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 24px; overflow: hidden; }
+        .module-head { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .module-title { font-family: 'Lora', serif; font-size: 16px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .module-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--accent-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .btn-excel { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--green); color: #fff; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; transition: background .15s; }
+        .btn-excel:hover { background: #15803d; }
+
+        /* Stats row */
+        .stats-row { display: flex; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .stat-pill { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; }
+        .stat-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stat-lbl { font-size: 12px; color: var(--muted); }
+
+        /* Table */
+        .table-wrap { overflow-x: auto; padding: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: #f8f9fb; border-bottom: 1px solid var(--border); padding: 10px 8px; text-align: center; font-weight: 600; color: var(--muted); font-size: 12px; white-space: nowrap; }
+        thead th.name-col { text-align: left; padding-left: 24px; min-width: 160px; font-size: 12px; }
+        tbody td { padding: 9px 8px; border-bottom: 1px solid var(--border); text-align: center; font-size: 13px; color: var(--text); }
+        tbody td.name-col { text-align: left; padding-left: 24px; font-weight: 500; color: var(--text); }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: #fafbfc; }
+        .cell-correct { background: var(--green-light); color: var(--green); font-weight: 700; border-radius: 4px; }
+        .cell-wrong { background: var(--red-light); color: var(--red); border-radius: 4px; }
+        .cell-empty { color: var(--subtle); }
+        .cell-total { font-weight: 700; color: var(--accent); }
+        .q-header { max-width: 80px; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+
+        .empty-state { text-align: center; padding: 56px 24px; color: var(--muted); }
+        .empty-state svg { opacity: .25; margin: 0 auto 16px; display: block; }
+        .empty-state p { font-size: 14px; }
+
+        .loading-wrap { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 56px; color: var(--muted); font-size: 14px; }
+        .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 700px) { .sidebar { display: none; } .main { margin-left: 0; padding-left: 16px; padding-right: 16px; } }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-sep"></div>
+    <a href="/dashboard" class="topbar-back">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        На главную
+    </a>
+    <div class="topbar-right">
+        <span class="last-updated" id="lastUpdated"></span>
+        <button type="button" class="btn-reload" id="reloadBtn" onclick="reloadResults()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Обновить
+        </button>
+    </div>
+</header>
+
+<aside class="sidebar">
+    <div class="sb-section">Общее</div>
+    <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Контент</div>
+    <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Библиотека модулей
+    </a>
+    <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Мои лекции
+    </a>
+    <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Начать лекцию
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Classroom</div>
+    <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Мои предметы
+    </a>
+    <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать предмет
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Создание</div>
+    <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+    </a>
+    <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Создать лекцию
+    </a>
+</aside>
+
+<main class="main">
+    <h1 class="page-title">Результаты сессии</h1>
+    <p class="page-sub">Ответы студентов по тестовым модулям</p>
+    <div id="content">
+        <div class="loading-wrap"><div class="spinner"></div>Загрузка данных...</div>
+    </div>
+</main>
+
+<script>
+    const sessionId = "{{.SessionID}}";
+    // Авторизация XHR через Bearer из localStorage + cookie как fallback.
+    const token = localStorage.getItem('token') || '';
+    function authHeaders() { return token ? { 'Authorization': 'Bearer ' + token } : {}; }
+
+    async function loadResults() {
+        try {
+            const resp = await fetch('/api/sessions/' + sessionId + '/results_data', { headers: authHeaders() });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            renderResults(data);
+            document.getElementById('lastUpdated').textContent = 'Обновлено в ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        } catch (e) {
+            document.getElementById('content').innerHTML = '<div class="empty-state"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>Ошибка загрузки: ' + escHtml(e.message) + '</p></div>';
+        }
+    }
+
+    function reloadResults() {
+        const btn = document.getElementById('reloadBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="animation:spin .8s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Загрузка...';
+        loadResults().finally(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Обновить';
+        });
+    }
+
+    function renderResults(data) {
+        const modules = data.modules || [];
+        if (modules.length === 0) {
+            document.getElementById('content').innerHTML = '<div class="empty-state"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>В этой лекции нет тестовых вопросов</p></div>';
+            return;
+        }
+
+        let html = '';
+        modules.forEach(function(mod) {
+            const qs = mod.questions || [];
+            const students = mod.students || [];
+            const totalQ = qs.length;
+            const avgCorrect = students.length > 0
+                ? (students.reduce(function(s, st) { return s + st.total; }, 0) / students.length).toFixed(1)
+                : '—';
+            const avgScore = students.length > 0
+                ? (students.reduce(function(s, st) { return s + st.total; }, 0) / students.length).toFixed(2)
+                : '—';
+
+            html += '<div class="module-block">';
+
+            // Header
+            html += '<div class="module-head">';
+            html += '<div class="module-title">';
+            html += '<div class="module-icon"><svg width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>';
+            html += escHtml(mod.module_title);
+            html += '</div>';
+            html += '<a href="/api/sessions/' + sessionId + '/modules/' + mod.module_id + '/results.xlsx" class="btn-excel"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Скачать Excel</a>';
+            html += '</div>';
+
+            // Stats
+            html += '<div class="stats-row">';
+            html += '<div class="stat-pill"><div class="stat-val">' + students.length + '</div><div class="stat-lbl">студентов</div></div>';
+            html += '<div class="stat-pill"><div class="stat-val">' + totalQ + '</div><div class="stat-lbl">вопросов</div></div>';
+            html += '<div class="stat-pill"><div class="stat-val" style="color:var(--green)">' + avgScore + '</div><div class="stat-lbl">средний балл</div></div>';
+            html += '</div>';
+
+            // Table
+            html += '<div class="table-wrap"><table><thead><tr>';
+            html += '<th class="name-col">Студент</th>';
+            qs.forEach(function(q) {
+                html += '<th class="q-header" title="' + escHtml(q.question) + '">В' + q.number + '</th>';
+            });
+            html += '<th>Балл</th></tr></thead><tbody>';
+
+            if (students.length === 0) {
+                html += '<tr><td colspan="' + (qs.length + 2) + '" class="cell-empty" style="padding:32px;text-align:center">Нет данных о студентах</td></tr>';
+            } else {
+                students.forEach(function(st) {
+                    html += '<tr><td class="name-col">' + escHtml(st.name) + '</td>';
+                    st.cells.forEach(function(cell) {
+                        var lbl = cell.chosen_label || '';
+                        if (!cell.has_answer) html += '<td class="cell-empty">—</td>';
+                        else if (cell.is_correct) html += '<td class="cell-correct">' + escHtml(lbl) + '</td>';
+                        else html += '<td class="cell-wrong">' + escHtml(lbl) + '</td>';
+                    });
+                    html += '<td class="cell-total">' + st.total + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div></div>';
+        });
+
+        document.getElementById('content').innerHTML = html;
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadResults();
+</script>
+</body>
+</html>

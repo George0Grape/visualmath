@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лекция — VisualMath</title>
+    <!-- ВАЖНО: конфиг MathJax обязан идти ДО загрузки самого скрипта,
+         иначе при async-загрузке из кэша MathJax стартует с дефолтами,
+         где $...$ как inline-формулы не включены → формулы остаются сырым LaTeX. -->
+    <script>
+      window.MathJax = {
+        loader: { load: ['[tex]/boldsymbol'] },
+        tex: {
+          packages: { '[+]': ['boldsymbol'] },
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="/static/vendor/mathjax/es5/tex-mml-chtml.js"></script>
+    <script src="/static/js/format-text.js"></script>
+    <script src="/static/vendor/plotly/plotly-2.27.0.min.js"></script>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7; --surface: #fff; --border: #e4e7ec;
+            --text: #1a1d23; --muted: #6b7280; --subtle: #9ca3af;
+            --accent: #2563eb; --accent-light: #eff6ff;
+            --green: #16a34a; --green-light: #dcfce7;
+            --topbar-h: 54px; --sidebar-w: 220px; --radius: 10px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+
+        /* Topbar */
+        .topbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+            height: var(--topbar-h); background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 20px; gap: 16px;
+        }
+        .topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 17px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-divider { width: 1px; height: 20px; background: var(--border); }
+        .topbar-lecture { font-size: 13px; color: var(--muted); font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .sync-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 99px;
+            font-size: 12px; font-weight: 600;
+            background: var(--green-light); color: var(--green);
+            transition: all .3s;
+        }
+        .sync-badge.disconnected { background: #fee2e2; color: #dc2626; }
+        .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .sync-badge:not(.disconnected) .sync-dot { animation: pulse 1.4s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+        /* Layout */
+        .layout {
+            position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+            display: grid; grid-template-columns: 1fr;
+        }
+
+        /* Slides sidebar */
+        .slides-list {
+            background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .slides-list-header {
+            padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+            font-size: 10px; font-weight: 700; letter-spacing: .08em;
+            text-transform: uppercase; color: var(--subtle);
+        }
+        .slides-list-body { flex: 1; overflow-y: auto; padding: 8px; }
+        .slide-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border-radius: 8px; cursor: pointer;
+            transition: background .15s; margin-bottom: 2px;
+        }
+        .slide-item:hover { background: var(--bg); }
+        .slide-item.active { background: var(--accent-light); }
+        .slide-num {
+            width: 22px; height: 22px; border-radius: 6px;
+            background: var(--bg); border: 1px solid var(--border);
+            font-size: 10px; font-weight: 700; color: var(--muted);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .slide-item.active .slide-num { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .slide-item-info { flex: 1; min-width: 0; }
+        .slide-item-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .slide-item.active .slide-item-title { color: var(--accent); }
+        .slide-type-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .dot-text { background: #16a34a; }
+        .dot-visual { background: #0891b2; }
+        .dot-question { background: #d97706; }
+        .dot-test { background: #dc2626; }
+
+        /* Main slide area */
+        .slide-area {
+            display: flex; flex-direction: column; overflow: hidden;
+            background: var(--bg);
+        }
+
+        .slide-viewport {
+            flex: 1; overflow: hidden; position: relative;
+        }
+        .slide-panel {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: auto; display: none; padding: 32px 40px;
+        }
+        .slide-panel.active { display: block; animation: fadeIn .25s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+        .slide-card {
+            background: var(--surface); border-radius: var(--radius);
+            border: 1px solid var(--border); box-shadow: var(--shadow);
+            padding: 32px 36px; max-width: 860px; margin: 0 auto;
+        }
+        .slide-card-header { margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+        .slide-type-badge { padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; letter-spacing: .03em; white-space: nowrap; flex-shrink: 0; margin-top: 4px; }
+        .badge-text { background: var(--green-light); color: var(--green); }
+        .badge-visual { background: #e0f2fe; color: #0369a1; }
+        .badge-question { background: #fef3c7; color: #92400e; }
+        .badge-test { background: #fee2e2; color: #dc2626; }
+        .slide-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; color: var(--text); line-height: 1.3; }
+        .slide-body { font-size: 16px; line-height: 1.75; color: var(--text); }
+        .slide-body img { max-width: 100%; border-radius: 8px; margin: 16px 0; }
+        .slide-body pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 16px 0; font-size: 14px; }
+
+        /* Question / test items */
+        .q-block { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+        .q-text { font-weight: 600; font-size: 15px; margin-bottom: 4px; color: var(--text); }
+        .q-hint { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+        .q-option { display: flex; align-items: flex-start; gap: 10px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 7px; cursor: pointer; font-size: 14px; transition: border-color .15s, background .15s; line-height: 1.5; }
+        .q-option:hover { border-color: var(--accent); }
+        .q-option input { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+        .q-option.selected { border-color: var(--accent); background: var(--accent-light); }
+        /* Текст ответа обёрнут в <span> — даём ему сжиматься во flex и переносить,
+           иначе широкая инлайн-формула вылезает за вариант. */
+        .q-option > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .q-option > span mjx-container { max-width: 100%; }
+        .q-text mjx-container[display="true"] { display: block; overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+        /* Bottom nav */
+        .nav-bar {
+            flex-shrink: 0; height: 60px;
+            background: var(--surface); border-top: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px; gap: 16px;
+        }
+        .nav-btns { display: flex; gap: 8px; }
+        .nav-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+            border: 1.5px solid var(--border); background: var(--surface);
+            color: var(--text); cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+        }
+        .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+        .nav-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+        .progress-wrap { flex: 1; max-width: 280px; }
+        .progress-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; text-align: center; }
+        .progress-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+
+        .counter { font-size: 13px; color: var(--muted); font-weight: 500; min-width: 60px; text-align: right; }
+
+        /* End lecture overlay */
+        .overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(26,29,35,.75); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; z-index: 500;
+        }
+        .overlay-card {
+            background: var(--surface); border-radius: 16px; padding: 40px;
+            text-align: center; max-width: 420px; width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        }
+        .overlay-icon { font-size: 44px; margin-bottom: 16px; }
+        .overlay-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+        .overlay-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+        .overlay-score { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; }
+        .overlay-score-num { font-size: 32px; font-weight: 700; color: var(--green); }
+        .overlay-score-label { font-size: 12px; color: var(--muted); }
+        .btn-home { display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px; background: var(--accent); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; }
+        .btn-home:hover { background: #1d4ed8; }
+
+        /* Module result overlay */
+        .result-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(26,29,35,.7); backdrop-filter: blur(3px);
+            display: flex; align-items: center; justify-content: center; z-index: 400; padding: 20px;
+        }
+        .result-card {
+            background: var(--surface); border-radius: 14px; padding: 28px;
+            max-width: 560px; width: 100%; max-height: 88vh; overflow-y: auto;
+            box-shadow: 0 16px 48px rgba(0,0,0,.18);
+        }
+        .result-title { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .result-score { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+        .result-score strong { font-size: 20px; color: var(--green); }
+        .result-q { background: var(--bg); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; border-left: 3px solid var(--border); }
+        .result-q.correct { border-left-color: var(--green); }
+        .result-q.wrong { border-left-color: #dc2626; }
+        .result-q.skipped { border-left-color: var(--subtle); }
+        .result-q-text { font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .result-pts { font-size: 13px; font-weight: 700; }
+        .result-ans { font-size: 13px; padding: 5px 10px; border-radius: 5px; margin-bottom: 3px; background: var(--surface); border: 1px solid var(--border); }
+        .result-ans.correct { background: var(--green-light); border-color: #86efac; }
+        .result-ans.wrong { background: #fee2e2; border-color: #fca5a5; }
+        .btn-close-result { margin-top: 14px; width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .btn-close-result:hover { background: #1d4ed8; }
+
+        .exit-btn {
+            position: fixed; bottom: 72px; left: 16px; z-index: 300;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 8px;
+            background: var(--surface); border: 1.5px solid var(--border);
+            color: var(--muted); font-size: 13px; font-weight: 500;
+            text-decoration: none; font-family: 'DM Sans', sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08);
+            transition: border-color .15s, color .15s;
+        }
+        .exit-btn:hover { border-color: #dc2626; color: #dc2626; }
+        @media (max-width: 700px) {
+            .slide-panel { padding: 14px 12px; }
+            .slide-card { padding: 18px 16px; }
+            .slide-title { font-size: 19px; }
+            .slide-body { font-size: 15px; }
+            .topbar { padding: 0 12px; gap: 10px; }
+            .topbar-divider { display: none; }
+            .nav-bar { padding: 0 12px; gap: 8px; height: 56px; }
+            .nav-btn { padding: 8px 11px; font-size: 12px; }
+            .progress-wrap { max-width: 130px; }
+            img, video, canvas { max-width: 100%; height: auto; }
+            .slide-body pre { font-size: 13px; }
+        }
+        @media (max-width: 480px) {
+            /* На самых узких прячем прогресс и счётчик — кнопки занимают строку */
+            .progress-wrap, .counter { display: none; }
+            .nav-btns { flex: 1; }
+            .nav-btn.primary { flex: 1; justify-content: center; }
+            .slide-title { font-size: 18px; }
+            .q-block { padding: 14px 14px; }
+            .q-option { padding: 11px 12px; font-size: 14px; }
+            /* Бейдж синхронизации компактнее, но статус виден (важно при плохом интернете) */
+            .sync-badge { padding: 4px 9px; font-size: 11px; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+</head>
+<body>
+
+<a href="/dashboard" class="exit-btn">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Выйти из лекции
+</a>
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <div class="topbar-divider"></div>
+    <div class="topbar-lecture" id="lectureTitle">Загрузка...</div>
+    <div id="syncBadge" class="sync-badge disconnected">
+        <span class="sync-dot"></span>
+        <span id="syncText">Подключение</span>
+    </div>
+</header>
+
+<div class="layout">
+    <!-- Main area -->
+    <div class="slide-area">
+        <div class="slide-viewport" id="slideViewport">
+            <div class="slide-panel active" id="loadingPanel">
+                <div class="slide-card" style="text-align:center;padding:60px;color:var(--muted)">
+                    <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 16px;opacity:.4"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    <div style="font-family:'Lora',serif;font-size:16px">Загрузка лекции...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-btns">
+                <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Назад
+                </button>
+                <button class="nav-btn primary" id="currentBtn" onclick="goToTeacherSlide()" disabled>
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                    На текущий слайд
+                </button>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-label" id="progressLabel">0 / 0</div>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+            </div>
+            <div class="counter" id="slideCounter">—</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const lectureId = "{{.LectureID}}";
+    const sessionId = new URLSearchParams(window.location.search).get('session');
+    const studentName = getCookie('full_name') || 'Студент';
+    const LECTURE_DATA = {{.LectureData}};
+
+    function getCookie(name) {
+        const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return v ? decodeURIComponent(v.pop()) : '';
+    }
+
+    // MathJax подключён async и на ПЕРВОЙ загрузке может быть ещё не готов к моменту
+    // рендера слайдов (renderSlides идёт после await fetch). Раньше ждали window 'load',
+    // но он мог уже отработать → формулы оставались сырым LaTeX (\boldsymbol и т.п.).
+    // Поллим до готовности MathJax и только тогда типографируем.
+    function typesetMath(els) {
+        if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise(els).catch(function(){});
+        } else {
+            setTimeout(function() { typesetMath(els); }, 150);
+        }
+    }
+
+    let slides = [];
+    let currentSlideIndex = 0;
+    let teacherSlideIndex = 0;
+    let ws = null;
+    let isSynced = true;
+    let testAnswers = {};
+    const completedModules = new Set();
+
+    // ─── Устойчивость к плохому интернету ────────────────
+    // Backoff при переподключении: растёт 1→2→4…→15с с джиттером,
+    // чтобы вся аудитория не переподключалась одним залпом.
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let pongReceived = true;   // получили ли pong на последний app-ping
+    let missedPongs = 0;       // сколько ping-ов подряд остались без pong
+
+    // Ответы дублируем в localStorage — переживают перезагрузку/выгрузку вкладки
+    const answersKey = 'vm_answers_' + sessionId + '_' + studentName;
+    function persistAnswers() {
+        try { localStorage.setItem(answersKey, JSON.stringify(testAnswers)); } catch (e) {}
+    }
+    function restoreAnswers() {
+        try {
+            const raw = localStorage.getItem(answersKey);
+            if (raw) {
+                const saved = JSON.parse(raw);
+                if (saved && typeof saved === 'object') testAnswers = saved;
+            }
+        } catch (e) {}
+    }
+    restoreAnswers();
+
+    // ─── Load lecture ────────────────────────────────────
+    function loadLecture() {
+        try {
+            const lecture = LECTURE_DATA;
+            if (lecture.title) {
+                document.getElementById('lectureTitle').textContent = lecture.title;
+                document.title = lecture.title + ' — VisualMath';
+            }
+            if (lecture.modules && lecture.modules.length > 0) {
+                slides = lecture.modules;
+                renderSlidesList();
+                renderSlides();
+                updateNavigation();
+            } else {
+                document.getElementById('loadingPanel').innerHTML = '<div class="slide-card" style="text-align:center;padding:60px;color:var(--muted)"><div style="font-family:\'Lora\',serif;font-size:16px">В этой лекции нет модулей</div></div>';
+            }
+        } catch (e) {
+            document.getElementById('loadingPanel').innerHTML = '<div class="slide-card" style="text-align:center;padding:60px;color:#dc2626">Ошибка загрузки лекции</div>';
+        }
+    }
+
+    function renderSlidesList() {
+        const list = document.getElementById('slidesList');
+        if (!list) return;
+        list.innerHTML = slides.map(function(m, i) {
+            const dotClass = 'dot-' + (m.type || 'text');
+            return '<div class="slide-item ' + (i === 0 ? 'active' : '') + '" onclick="goToSlide(' + i + ')" id="si-' + i + '">' +
+                '<div class="slide-num">' + (i+1) + '</div>' +
+                '<div class="slide-item-info"><div class="slide-item-title">' + esc(m.title || 'Без названия') + '</div></div>' +
+                '<span class="slide-type-dot ' + dotClass + '"></span>' +
+                '</div>';
+        }).join('');
+    }
+
+    function renderModuleContent(module) {
+        var c = module.content;
+        if (!c) return '<p style="color:var(--muted)">Содержание отсутствует</p>';
+        // Если контент пришёл как строка — попробуем распарсить
+        if (typeof c === 'string') { try { c = JSON.parse(c); } catch(e) {} }
+        if (module.type === 'text') {
+            var text = (typeof c === 'object' && c.text) ? c.text : (typeof c === 'string' ? c : JSON.stringify(c));
+            return '<div style="font-size:17px;line-height:1.8">' + formatText(text) + '</div>';
+        }
+        var questions = Array.isArray(c) ? c : (c && c.questions ? c.questions : null);
+        if (module.type === 'test' && questions && questions.length > 0) {
+            var mid = module.id || 0;
+            var html = '';
+            questions.forEach(function(q, i) {
+                html += '<div class="q-block">';
+                html += '<div class="q-text">' + (i+1) + '. ' + formatText(q.question) + '</div>';
+                if (q.answers) {
+                    q.answers.forEach(function(a, ai) {
+                        html += '<label class="q-option" id="opt_' + mid + '_' + i + '_' + ai + '">';
+                        html += '<input type="checkbox" name="q_' + mid + '_' + i + '" value="' + ai + '" onchange="toggleCheckbox(this,' + mid + ',' + i + ')">';
+                        html += '<span>' + formatText(a) + '</span></label>';
+                    });
+                }
+                html += '</div>';
+            });
+            return html;
+        }
+        if (module.type === 'poll' || module.type === 'question') {
+            // Для question-модуля pollId = 'module_<id>', для live poll = id строка
+            var pollId = module.type === 'question' ? ('module_' + (module.id || 0)) : (module.id || 'poll');
+            var html = '<div style="padding:4px 0">';
+            html += '<p style="font-size:16px;font-weight:600;font-family:Lora,serif;margin:0 0 18px 0;line-height:1.5">' + formatText(c.question || '') + '</p>';
+            (c.options || []).forEach(function(opt, i) {
+                html += '<label class="q-option" id="pollopt_' + pollId + '_' + i + '" onclick="votePoll(event,\'' + pollId + '\',' + i + ')">' +
+                    '<input type="radio" name="poll_' + pollId + '" value="' + i + '">' +
+                    '<span>' + formatText(opt) + '</span></label>';
+            });
+            html += '</div>';
+            return html;
+        }
+        if (module.type === 'graph3d' && c && c.mode) {
+            var gid = 'g3d-' + (module.id || Math.random().toString(36).slice(2));
+            return '<div id="' + gid + '" data-graph3d="' + JSON.stringify(c).replace(/"/g,'&quot;') + '" style="height:420px;border-radius:10px;overflow:hidden"></div>';
+        }
+        return '<pre style="font-size:13px;white-space:pre-wrap">' + JSON.stringify(c, null, 2) + '</pre>';
+    }
+
+    function initGraph3DAll() {
+        document.querySelectorAll('[data-graph3d]').forEach(function(el) {
+            if (el._g3dInit) return;
+            el._g3dInit = true;
+            try { renderGraph3D(el.id, JSON.parse(el.dataset.graph3d)); } catch(e) {}
+        });
+    }
+
+    function renderGraph3D(containerId, cfg) {
+        if (!window.Plotly || !cfg) return;
+        var res = Math.min(cfg.res || 50, 80);
+        function pyToJs(e){return e.replace(/\*\*/g,'^').replace(/\bsin\b/g,'Math.sin').replace(/\bcos\b/g,'Math.cos').replace(/\btan\b/g,'Math.tan').replace(/\bsqrt\b/g,'Math.sqrt').replace(/\bexp\b/g,'Math.exp').replace(/\blog10\b/g,'Math.log10').replace(/\blog\b/g,'Math.log').replace(/\babs\b/g,'Math.abs').replace(/\bpi\b/g,'Math.PI').replace(/\be\b/g,'Math.E').replace(/\^/g,'**');}
+        function makeFn(e,v){return new Function(v[0],v[1]||'_','"use strict";return('+pyToJs(e)+');');}
+        function linspace(a,b,n){var arr=new Array(n),s=(b-a)/(n-1);for(var i=0;i<n;i++)arr[i]=a+i*s;return arr;}
+        var cs=[[0,'#dbeafe'],[0.3,'#93c5fd'],[0.55,'#3b82f6'],[0.78,'#1d4ed8'],[1,'#172554']];
+        var ax={showbackground:true,backgroundcolor:'rgba(241,245,249,0.6)',gridcolor:'#cbd5e1',showline:true,linecolor:'#374151',linewidth:2,zeroline:true,zerolinecolor:'#64748b',nticks:6,tickfont:{size:10,color:'#6b7280'},showspikes:false};
+        function surf3d(x,y,z){return {type:'surface',x:x,y:y,z:z,colorscale:cs,opacity:1,showscale:false,
+            lighting:{ambient:0.62,diffuse:0.9,specular:0.18,roughness:0.45,fresnel:0.15},lightposition:{x:100,y:200,z:300},
+            contours:{z:{show:true,usecolormap:true,width:2,project:{z:true}}}};}
+        var layout3d={paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'DM Sans,sans-serif',color:'#1a1d23'},margin:{l:0,r:0,t:10,b:0},showlegend:false,
+            scene:{xaxis:Object.assign({title:{text:'x',font:{size:11}}},ax),yaxis:Object.assign({title:{text:'y',font:{size:11}}},ax),zaxis:Object.assign({title:{text:'z',font:{size:11}}},ax),aspectmode:'cube',bgcolor:'#fff',camera:{eye:{x:1.6,y:1.6,z:1.2}}}};
+        var opts={responsive:true,displaylogo:false};
+        try {
+            if (cfg.mode === '2d') {
+                var xs=linspace(cfg.xMin,cfg.xMax,res*3),fn=makeFn(cfg.expr,['x','_']);
+                var ys=xs.map(function(x){try{var v=fn(x);return isFinite(v)?v:null;}catch(e){return null;}});
+                Plotly.react(containerId,[{type:'scatter',mode:'lines',x:xs,y:ys,line:{color:'#2563eb',width:2.5}}],
+                    {paper_bgcolor:'#fff',plot_bgcolor:'#f8fafc',font:{family:'DM Sans,sans-serif'},margin:{l:50,r:20,t:20,b:50},showlegend:false,
+                    xaxis:{gridcolor:'#e4e7ec',title:{text:'x'},tickfont:{size:10}},yaxis:{gridcolor:'#e4e7ec',title:{text:'y'},tickfont:{size:10}}},opts);
+            } else if (cfg.mode === 'surface') {
+                var xs=linspace(cfg.xMin,cfg.xMax,res),ys=linspace(cfg.yMin,cfg.yMax,res),fn=makeFn(cfg.expr,['x','y']);
+                var zs=ys.map(function(y){return xs.map(function(x){try{var v=fn(x,y);return isFinite(v)?v:null;}catch(e){return null;}});});
+                Plotly.react(containerId,[surf3d(xs,ys,zs)],layout3d,opts);
+            } else if (cfg.mode === 'param') {
+                var us=linspace(cfg.uMin,cfg.uMax,res),vs=linspace(cfg.vMin,cfg.vMax,res);
+                var fnX=makeFn(cfg.px,['u','v']),fnY=makeFn(cfg.py,['u','v']),fnZ=makeFn(cfg.pz,['u','v']);
+                var xs2=[],ys2=[],zs2=[];
+                vs.forEach(function(vv){var rx=[],ry=[],rz=[];us.forEach(function(u){try{rx.push(fnX(u,vv));ry.push(fnY(u,vv));rz.push(fnZ(u,vv));}catch(e){rx.push(null);ry.push(null);rz.push(null);}});xs2.push(rx);ys2.push(ry);zs2.push(rz);});
+                Plotly.react(containerId,[surf3d(xs2,ys2,zs2)],layout3d,opts);
+            }
+        } catch(e) { console.error('graph3d:', e); }
+    }
+
+    function getTypeBadge(type) {
+        const map = {
+            text: ['badge-text', 'Текст'],
+            question: ['badge-question', 'Вопрос'],
+            test: ['badge-test', 'Тест'],
+            poll: ['badge-question', 'Опрос'],
+            graph3d: ['badge-text', 'График']
+        };
+        const info = map[type] || ['badge-text', type];
+        return '<span class="slide-type-badge ' + info[0] + '">' + info[1] + '</span>';
+    }
+
+    function renderSlides() {
+        const viewport = document.getElementById('slideViewport');
+        viewport.innerHTML = '';
+        slides.forEach(function(module, index) {
+            const panel = document.createElement('div');
+            panel.className = 'slide-panel' + (index === 0 ? ' active' : '');
+            panel.id = 'slide-' + index;
+
+            const isLast = index === slides.length - 1;
+            const bodyContent = module.type === 'test'
+                ? '<div style="padding:20px;text-align:center;color:var(--muted)">Загрузка вопросов...</div>'
+                : renderModuleContent(module);
+
+            panel.innerHTML = '<div class="slide-card">' +
+                '<div class="slide-card-header">' +
+                    '<div style="flex:1"><div class="slide-title">' + esc(module.title || 'Без названия') + '</div></div>' +
+                    (module.type && module.type !== 'text' ? getTypeBadge(module.type) : '') +
+                '</div>' +
+                '<div class="slide-body" id="slide-body-' + index + '">' + bodyContent + '</div>' +
+                (isLast ? '<div style="text-align:center;margin-top:32px;padding:20px;background:var(--bg);border-radius:10px;border:1px solid var(--border)"><p style="font-size:14px;color:var(--muted);margin-bottom:0">Вы просмотрели все материалы лекции</p></div>' : '') +
+                '</div>';
+            viewport.appendChild(panel);
+        });
+
+        typesetMath();
+
+        initGraph3DAll();
+        loadTestAssignments();
+    }
+
+    async function loadTestAssignments() {
+        if (!sessionId) return;
+        var token = localStorage.getItem('token') || '';
+        for (var i = 0; i < slides.length; i++) {
+            var module = slides[i];
+            if (module.type !== 'test') continue;
+            try {
+                var url = '/api/modules/' + module.id + '/assign?session_id=' + encodeURIComponent(sessionId);
+                if (token) url += '&token=' + encodeURIComponent(token);
+                var resp = await fetch(url);
+                if (!resp.ok) continue;
+                var data = await resp.json();
+                var questions = data.questions;
+                if (!questions || !questions.length) continue;
+                // Подменяем content модуля на выданные вопросы
+                module.content = questions;
+                var bodyEl = document.getElementById('slide-body-' + i);
+                if (bodyEl) {
+                    bodyEl.innerHTML = renderModuleContent(module);
+                    typesetMath([bodyEl]);
+                }
+            } catch(e) {}
+        }
+    }
+
+    function changeSlide(delta) {
+        const newIndex = currentSlideIndex + delta;
+        if (newIndex >= 0 && newIndex < slides.length) goToSlide(newIndex);
+    }
+
+    function goToSlide(index) {
+        if (index < 0 || index >= slides.length || index === currentSlideIndex) return;
+
+        const existing = document.getElementById('moduleResultOverlay');
+        if (existing) existing.remove();
+
+        const currentModule = slides[currentSlideIndex];
+        if (currentModule && currentModule.type === 'test') {
+            sendPendingAnswers();
+        }
+
+        document.getElementById('slide-' + currentSlideIndex).classList.remove('active');
+        const panel = document.getElementById('slide-' + index);
+        panel.classList.add('active');
+
+        // Plotly рисует график с неверным размером в скрытом (display:none) контейнере.
+        // Когда слайд становится видимым — пересчитываем размеры.
+        if (window.Plotly && panel) {
+            panel.querySelectorAll('[data-graph3d]').forEach(function(el) {
+                try { Plotly.Plots.resize(el); } catch(e) {}
+            });
+        }
+
+        currentSlideIndex = index;
+        updateNavigation();
+    }
+
+    function updateNavigation() {
+        document.getElementById('prevBtn').disabled = currentSlideIndex === 0;
+        document.getElementById('currentBtn').disabled = currentSlideIndex === teacherSlideIndex;
+        const cur = currentSlideIndex + 1;
+        const tot = slides.length;
+        document.getElementById('progressLabel').textContent = cur + ' / ' + tot;
+        document.getElementById('slideCounter').textContent = cur + ' / ' + tot;
+        if (tot > 0) document.getElementById('progressFill').style.width = (cur / tot * 100) + '%';
+    }
+
+    function goToTeacherSlide() {
+        goToSlide(teacherSlideIndex);
+    }
+
+    // ─── WebSocket ────────────────────────────────────────
+    let pingInterval = null;
+    let isInitialized = false;
+    let showResultsEnabled = false;
+
+    // Блокирующий оверлей на время инициализации — скрывает флэш слайда 0
+    const initBlockEl = document.createElement('div');
+    initBlockEl.style.cssText = 'position:fixed;inset:0;background:var(--bg,#f4f5f7);z-index:9998;transition:opacity .15s';
+    document.body.appendChild(initBlockEl);
+    function hideInitBlock() {
+        if (initBlockEl.parentNode) {
+            initBlockEl.style.opacity = '0';
+            setTimeout(function() { if (initBlockEl.parentNode) initBlockEl.remove(); }, 200);
+        }
+    }
+    // Fallback: убрать оверлей через 5 сек даже если slide_changed не пришёл
+    // (мобильные браузеры могут потерять первый WS-пакет или медленнее подключаться)
+    setTimeout(function() {
+        if (!isInitialized) {
+            isInitialized = true;
+            showResultsEnabled = true;
+            hideInitBlock();
+        }
+    }, 5000);
+
+    function connectWebSocket() {
+        if (!sessionId) { updateSyncUI(false, 'Нет session ID'); return; }
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        // убираем www. — cookie и localStorage привязаны к основному домену
+        const host = window.location.host.replace(/^www\./, '');
+        let token = localStorage.getItem('token') || '';
+        // проверяем не истёк ли токен; если истёк — чистим и отправляем на логин
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+                    localStorage.removeItem('token');
+                    token = '';
+                }
+            } catch(e) { localStorage.removeItem('token'); token = ''; }
+        }
+        ws = new WebSocket(protocol + '//' + host + '/ws/session/' + sessionId + '/student?token=' + encodeURIComponent(token));
+        ws.onopen = function() {
+            updateSyncUI(true, 'Синхронизировано');
+            reconnectAttempts = 0;          // успешное соединение — сбрасываем backoff
+            pongReceived = true;
+            missedPongs = 0;
+            ws.send(JSON.stringify({ type: 'student_info', payload: { session_id: sessionId, lecture_id: lectureId } }));
+            // Дослать ответы, которые могли накопиться, пока связь была разорвана
+            sendPendingAnswers();
+            // Пинг каждые 30 сек: и nginx не закроет по таймауту, и ловим half-open
+            if (pingInterval) clearInterval(pingInterval);
+            pingInterval = setInterval(function() {
+                if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                // Прошлый ping остался без ответа — соединение «висит» (half-open)
+                if (!pongReceived) {
+                    missedPongs++;
+                    if (missedPongs >= 2) {
+                        updateSyncUI(false, 'Переподключение…');
+                        try { ws.close(); } catch (e) {}  // спровоцирует onclose → reconnect
+                        return;
+                    }
+                }
+                pongReceived = false;
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }, 30000);
+        };
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'pong') { pongReceived = true; missedPongs = 0; return; }
+                if (data.type === 'slide_changed') {
+                    teacherSlideIndex = data.payload.slide_index;
+                    if (isSynced) { goToSlide(teacherSlideIndex); }
+                    else { updateNavigation(); }
+                    if (!isInitialized) {
+                        isInitialized = true;
+                        hideInitBlock();
+                        // Разрешаем показ оверлеев только после паузы — за это время
+                        // все начальные module_completed пролетят молча
+                        setTimeout(function() { showResultsEnabled = true; }, 500);
+                    }
+                }
+                else if (data.type === 'sync_status') {
+                    isSynced = data.payload.synced;
+                    updateSyncUI(isSynced, isSynced ? 'Синхронизировано' : 'Автономный режим');
+                }
+                else if (data.type === 'module_completed') {
+                    completedModules.add(data.payload.module_id);
+                    lockModuleInputs(data.payload.module_id);
+                    // Показывать оверлей только если начальная синхронизация завершена
+                    if (showResultsEnabled) {
+                        var currentModule = slides[currentSlideIndex];
+                        if (currentModule && currentModule.id === data.payload.module_id) {
+                            showModuleCompleted(data.payload);
+                        }
+                    }
+                }
+                else if (data.type === 'poll_inserted') { handlePollInserted(data.payload); }
+                else if (data.type === 'poll_results') { if (!data.payload.is_restore) showPollResults(data.payload); else restorePollResults(data.payload); }
+                else if (data.type === 'lecture_end') { sendPendingAnswers(); setTimeout(showLectureEnd, 300); }
+            } catch (e) {}
+        };
+        ws.onclose = function() {
+            clearInterval(pingInterval);
+            pingInterval = null;
+            // Экспоненциальный backoff с джиттером: 1,2,4,8,15,15… секунд + до 1с разброса
+            const base = Math.min(15000, 1000 * Math.pow(2, reconnectAttempts));
+            const delay = base + Math.random() * 1000;
+            reconnectAttempts++;
+            updateSyncUI(false, 'Переподключение…');
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectWebSocket, delay);
+        };
+        ws.onerror = function() { updateSyncUI(false, 'Переподключение…'); };
+    }
+
+    // ─── Опросник ──────────────────────────────────────────────
+    var myPollVote = {}; // pollId -> optionIndex
+
+    function restorePollResults(payload) {
+        // Тихое восстановление завершённого опроса — блокируем радиокнопки
+        var pollId = payload.poll_id;
+        document.querySelectorAll('[id^="pollopt_' + pollId + '_"]').forEach(function(l) {
+            var input = l.querySelector('input');
+            if (input) input.disabled = true;
+            l.style.pointerEvents = 'none';
+            l.style.opacity = '0.6';
+        });
+    }
+
+    function votePoll(event, pollId, optIdx) {
+        event.preventDefault();
+        var label = event.currentTarget;
+        var radio = label.querySelector('input[type=radio]');
+        if (radio) radio.checked = true;
+        // Снять подсветку с других
+        document.querySelectorAll('[id^="pollopt_' + pollId + '_"]').forEach(function(l) {
+            l.classList.remove('selected');
+        });
+        label.classList.add('selected');
+        myPollVote[pollId] = optIdx;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'poll_vote', payload: { poll_id: pollId, option_index: optIdx } }));
+        }
+    }
+
+    function handlePollInserted(payload) {
+        var pollId = payload.poll_id;
+        // Module polls уже есть в массиве слайдов (загружены из БД) — не вставляем дубликат
+        if (payload.is_module) return;
+        var position = payload.position;
+        slides = slides.filter(function(s) { return s.id !== pollId; });
+        var pollSlide = { id: pollId, type: 'poll', title: 'Опрос', content: { question: payload.question, options: payload.options } };
+        var insertIdx;
+        if (position < 1 || position > slides.length + 1) {
+            slides.push(pollSlide);
+            insertIdx = slides.length - 1;
+        } else {
+            insertIdx = position - 1;
+            slides.splice(insertIdx, 0, pollSlide);
+        }
+        // Если опрос вставлен до текущего слайда — сдвигаем индекс
+        if (insertIdx <= currentSlideIndex) {
+            currentSlideIndex++;
+        }
+        renderSlides();
+        // renderSlides сбрасывает active на slide-0 — восстанавливаем правильный слайд
+        var s0 = document.getElementById('slide-0');
+        if (s0) s0.classList.remove('active');
+        var cur = document.getElementById('slide-' + currentSlideIndex);
+        if (cur) cur.classList.add('active');
+        updateNavigation();
+    }
+
+    function showPollResults(payload) {
+
+        var myVote = myPollVote[payload.poll_id];
+        var html = '<div style="font-family:Lora,serif;font-size:18px;font-weight:600;margin-bottom:8px;">Результаты опроса</div>';
+        html += '<div style="font-size:14px;color:var(--muted);margin-bottom:20px;">' + esc(payload.question) + '</div>';
+        payload.options.forEach(function(opt, i) {
+            var pct = payload.percentages[i] || 0;
+            var votes = payload.votes[i] || 0;
+            var isMyVote = myVote === i;
+            html += '<div style="margin-bottom:14px;">' +
+                '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">' +
+                '<span' + (isMyVote ? ' style="font-weight:600;color:var(--accent)"' : '') + '>' + esc(opt) + (isMyVote ? ' ✓' : '') + '</span>' +
+                '<span style="font-weight:600;">' + pct + '%</span></div>' +
+                '<div style="background:#f0f2f5;border-radius:99px;height:10px;">' +
+                '<div style="background:' + (isMyVote ? 'var(--accent)' : '#94a3b8') + ';border-radius:99px;height:10px;width:' + pct + '%;transition:width .5s;"></div>' +
+                '</div></div>';
+        });
+        html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Всего голосов: ' + payload.total + '</div>';
+
+        var overlay = document.createElement('div');
+        overlay.id = 'pollResultOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:480px;width:90vw;box-shadow:0 8px 40px rgba(0,0,0,.2);">' +
+            html +
+            '<button onclick="this.closest(\'#pollResultOverlay\').remove()" style="margin-top:20px;width:100%;padding:11px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;">Закрыть</button>' +
+            '</div>';
+        // Исправляем querySelector для remove
+        overlay.querySelector('button').onclick = function() { overlay.remove(); };
+        document.body.appendChild(overlay);
+    }
+    // ───────────────────────────────────────────────────────────
+
+    function updateSyncUI(connected, message) {
+        const badge = document.getElementById('syncBadge');
+        const text = document.getElementById('syncText');
+        badge.className = 'sync-badge' + (connected ? '' : ' disconnected');
+        text.textContent = message;
+    }
+
+    // ─── Answers ─────────────────────────────────────────
+    function sendPendingAnswers() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        for (var moduleId in testAnswers) {
+            if (completedModules.has(parseInt(moduleId))) continue;
+            var answers = testAnswers[moduleId];
+            if (Object.keys(answers).length > 0) {
+                ws.send(JSON.stringify({ type: 'test_answer', payload: { module_id: parseInt(moduleId), student_name: studentName, answers: answers } }));
+            }
+        }
+    }
+
+    function lockModuleInputs(moduleId) {
+        document.querySelectorAll('[name^="q_' + moduleId + '_"]').forEach(function(inp) {
+            inp.disabled = true;
+            var opt = inp.closest('.q-option');
+            if (opt) { opt.style.cursor = 'default'; opt.style.pointerEvents = 'none'; opt.style.opacity = '0.7'; }
+        });
+    }
+
+    function autoSendAnswers(moduleId) {
+        if (completedModules.has(parseInt(moduleId))) return;
+        persistAnswers();  // сохраняем локально всегда — даже если связи нет
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'test_answer', payload: { module_id: parseInt(moduleId), student_name: studentName, answers: testAnswers[moduleId] || {} } }));
+        }
+        // если WS закрыт — ответ уже в localStorage и в testAnswers,
+        // долетит из sendPendingAnswers() при следующем onopen
+    }
+
+    function selectOption(event, moduleId, qIdx, answerIdx) {
+        if (completedModules.has(moduleId)) return;
+        var prev = (testAnswers[moduleId] !== undefined && testAnswers[moduleId][qIdx] !== undefined)
+            ? testAnswers[moduleId][qIdx] : null;
+
+        // Повторный клик по уже выбранному — сбрасываем выбор
+        if (prev !== null && prev === answerIdx) {
+            event.preventDefault();
+            var inp = document.querySelector('input[name="q_' + moduleId + '_' + qIdx + '"][value="' + answerIdx + '"]');
+            if (inp) inp.checked = false;
+            document.querySelectorAll('input[name="q_' + moduleId + '_' + qIdx + '"]').forEach(function(i) {
+                i.closest('.q-option').classList.remove('selected');
+            });
+            delete testAnswers[moduleId][qIdx];
+            autoSendAnswers(moduleId);
+            return;
+        }
+
+        // Обычный выбор
+        event.preventDefault();
+        document.querySelectorAll('input[name="q_' + moduleId + '_' + qIdx + '"]').forEach(function(i) {
+            i.checked = false;
+            i.closest('.q-option').classList.remove('selected');
+        });
+        var selected = document.querySelector('input[name="q_' + moduleId + '_' + qIdx + '"][value="' + answerIdx + '"]');
+        if (selected) {
+            selected.checked = true;
+            selected.closest('.q-option').classList.add('selected');
+        }
+        if (!testAnswers[moduleId]) testAnswers[moduleId] = {};
+        testAnswers[moduleId][qIdx] = answerIdx;
+        autoSendAnswers(moduleId);
+    }
+
+    function toggleCheckbox(input, moduleId, qIdx) {
+        if (completedModules.has(moduleId)) { input.checked = !input.checked; return; }
+        input.closest('.q-option').classList.toggle('selected', input.checked);
+        if (!testAnswers[moduleId]) testAnswers[moduleId] = {};
+        var current = Array.isArray(testAnswers[moduleId][qIdx]) ? testAnswers[moduleId][qIdx] : [];
+        var val = parseInt(input.value);
+        if (input.checked) { if (current.indexOf(val) < 0) current.push(val); }
+        else { current = current.filter(function(v) { return v !== val; }); }
+        testAnswers[moduleId][qIdx] = current;
+        autoSendAnswers(moduleId);
+    }
+
+    // ─── Results ─────────────────────────────────────────
+    function showModuleCompleted(payload) {
+        const existing = document.getElementById('moduleResultOverlay');
+        if (existing) existing.remove();
+
+        const totalPoints = payload.total_points || 0;
+        const maxPoints = payload.max_points || 0;
+        const qs = payload.questions || [];
+        const scoreColor = totalPoints >= 0 ? 'var(--green)' : '#dc2626';
+
+        let questionsHTML = '';
+        qs.forEach(function(q, i) {
+            const yourIdxs = q.your_answer_idxs || [];
+            const correctIdxs = q.correct_idxs || [];
+            const noAnswer = yourIdxs.length === 0;
+            const cls = noAnswer ? 'skipped' : (q.is_correct ? 'correct' : 'wrong');
+            const icon = noAnswer ? '—' : (q.is_correct ? '✓' : '✗');
+            const pts = (q.points >= 0 ? '+' : '') + q.points.toFixed(2);
+            questionsHTML += '<div class="result-q ' + cls + '">';
+            questionsHTML += '<div class="result-q-text"><span>' + (i+1) + '. ' + formatText(q.question) + '</span>';
+            questionsHTML += '<span class="result-pts" style="color:' + (q.is_correct ? 'var(--green)' : '#dc2626') + '">' + icon + ' ' + pts + '</span></div>';
+            q.answers.forEach(function(a, ai) {
+                const isCorrect = correctIdxs.indexOf(ai) >= 0;
+                const isYours = yourIdxs.indexOf(ai) >= 0;
+                const cls2 = isCorrect ? 'correct' : (isYours ? 'wrong' : '');
+                questionsHTML += '<div class="result-ans ' + cls2 + '">' + formatText(a) + '</div>';
+            });
+            questionsHTML += '</div>';
+        });
+
+        const overlay = document.createElement('div');
+        overlay.id = 'moduleResultOverlay';
+        overlay.className = 'result-overlay';
+        overlay.innerHTML = '<div class="result-card">' +
+            '<div class="result-title">Результаты проверки</div>' +
+            '<div class="result-score">Итого: <strong style="color:' + scoreColor + '">' + totalPoints.toFixed(2) + '</strong> <span style="color:var(--subtle)">/ ' + maxPoints + '</span></div>' +
+            questionsHTML +
+            '<button class="btn-close-result" id="closeModuleResult">Закрыть</button></div>';
+        document.body.appendChild(overlay);
+        document.getElementById('closeModuleResult').onclick = function() { overlay.remove(); };
+        typesetMath([overlay]);
+    }
+
+    function showLectureEnd() {
+        const scoreEl = document.getElementById('scoreNotif');
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        overlay.innerHTML = '<div class="overlay-card">' +
+            '<div class="overlay-icon">🎓</div>' +
+            '<div class="overlay-title">Лекция завершена</div>' +
+            '<div class="overlay-sub">Спасибо за участие!</div>' +
+            (scoreEl ? '<div class="overlay-score">' + scoreEl.innerHTML + '</div>' : '') +
+            '<a href="/dashboard" class="btn-home"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>На главную</a>' +
+            '</div>';
+        document.body.appendChild(overlay);
+    }
+
+    function showStudentScore(payload) {
+        const correct = payload.correct || 0;
+        const total = payload.total || 0;
+        const score10 = payload.score10 || 0;
+        if (total === 0) return;
+        let el = document.getElementById('scoreNotif');
+        if (!el) { el = document.createElement('div'); el.id = 'scoreNotif'; document.body.appendChild(el); }
+        el.style.cssText = 'position:fixed;bottom:80px;right:24px;background:var(--surface);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow-hover);z-index:9999;border-left:4px solid var(--green);font-family:\'DM Sans\',sans-serif';
+        el.innerHTML = '<p style="margin:0 0 4px 0;font-weight:600;font-size:13px">Ответы приняты</p>' +
+            '<p style="margin:0;font-size:13px;color:var(--muted)">Правильно: ' + correct + ' / ' + total + '</p>' +
+            '<p style="margin:4px 0 0;font-size:22px;font-weight:700;color:var(--green)">' + score10.toFixed(1) + ' / 10</p>';
+    }
+
+    function completeLecture() { showLectureEnd(); }
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowLeft') changeSlide(-1);
+        else if (e.key === 'ArrowRight') changeSlide(1);
+    });
+    window.addEventListener('beforeunload', function() { sendPendingAnswers(); });
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') sendPendingAnswers(); });
+    window.addEventListener('DOMContentLoaded', function() { loadLecture(); connectWebSocket(); });
+</script>
+</body>
+</html>

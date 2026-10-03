@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Страница не найдена · VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --topbar-h: 58px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── topbar ── */
+        .topbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            height: var(--topbar-h);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 24px; gap: 16px;
+        }
+        .topbar-logo {
+            font-family: 'Lora', serif; font-weight: 600; font-size: 18px;
+            color: var(--text); text-decoration: none; letter-spacing: -.3px;
+        }
+        .topbar-logo span { color: var(--accent); }
+
+        /* ── main layout ── */
+        .page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding-top: var(--topbar-h);
+        }
+
+        .content {
+            display: flex;
+            align-items: center;
+            gap: 64px;
+            padding: 40px 48px;
+            max-width: 960px;
+            width: 100%;
+        }
+
+        /* ── left block ── */
+        .left {
+            flex: 1;
+            position: relative;
+        }
+
+        .text-block {
+            margin-top: 0;
+        }
+
+        .heading {
+            font-family: 'Lora', serif;
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        .desc {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        .nav-line {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .nav-line a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .nav-line a:hover { text-decoration: underline; }
+
+        /* ── right block ── */
+        .right {
+            flex-shrink: 0;
+        }
+
+        .gif-wrap {
+            width: 320px;
+            height: 320px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #111;
+        }
+
+        .gif-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* ── responsive ── */
+        @media (max-width: 700px) {
+            .content { flex-direction: column; gap: 32px; padding: 24px 20px; }
+            .watermark { font-size: 120px; }
+            .gif-wrap { width: 100%; height: 220px; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+    <nav class="topbar">
+        <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    </nav>
+
+    <div class="page">
+        <div class="content">
+            <div class="left">
+                <div class="text-block">
+                    <h1 class="heading">Страница не найдена</h1>
+                    <p class="desc">Возможно, она никогда не существовала или была удалена.</p>
+                    <p class="nav-line">
+                        <a href="javascript:history.back()">Вернитесь назад</a>
+                        &nbsp;или перейдите на
+                        <a href="/dashboard">дашборд</a>
+                    </p>
+                </div>
+            </div>
+            <div class="right">
+                <div class="gif-wrap">
+                    <img id="err-img" src="" alt="404 animation">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var imgs = ['/static/2.gif', '/static/7.gif', '/static/3.jpg', '/static/10.jpg'];
+        document.getElementById('err-img').src = imgs[Math.floor(Math.random() * imgs.length)];
+    </script>
+</body>
+</html>

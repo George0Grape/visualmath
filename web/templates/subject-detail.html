@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Subject.Title}} — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --text: #1a1d23;
+            --muted: #6b7280;
+            --subtle: #9ca3af;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --danger: #dc2626;
+            --danger-light: #fef2f2;
+            --green: #16a34a;
+            --green-light: #f0fdf4;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 16px 40px rgba(0,0,0,.05);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── Topbar ── */
+        .topbar {
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center;
+            padding: 0 20px; gap: 10px;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .back-link {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 13px; color: var(--muted); text-decoration: none;
+            padding: 6px 10px; border-radius: 8px;
+            transition: background .15s, color .15s;
+        }
+        .back-link:hover { background: var(--bg); color: var(--text); }
+        .crumb-sep { color: var(--border); font-size: 18px; }
+        .crumb-current { font-size: 15px; font-weight: 500; color: var(--text); }
+        .topbar-right { margin-left: auto; display: flex; gap: 6px; }
+        .tb-btn {
+            height: 33px; padding: 0 14px; border-radius: 8px; border: none;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; text-decoration: none;
+            transition: all .15s;
+        }
+        .tb-primary { background: var(--accent); color: white; }
+        .tb-primary:hover { background: #1d4ed8; }
+        .tb-ghost { background: none; color: var(--muted); }
+        .tb-ghost:hover { background: var(--bg); color: var(--text); }
+
+        /* ── Banner ── */
+        .banner {
+            height: 108px;
+            position: relative;
+            display: flex; align-items: center;
+            padding: 0 32px;
+            overflow: hidden;
+        }
+        .banner-bg { position: absolute; inset: 0; }
+        .banner-geo {
+            position: absolute; right: -10px; top: -30px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.08);
+        }
+        .banner-geo2 {
+            position: absolute; right: 80px; bottom: -60px;
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.05);
+        }
+        .banner-title {
+            font-family: 'Lora', serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 1px 4px rgba(0,0,0,.2);
+        }
+        .banner-code-pill {
+            position: absolute; bottom: 10px; right: 20px;
+            z-index: 1;
+            background: rgba(0,0,0,.2);
+            border: 1px solid rgba(255,255,255,.25);
+            backdrop-filter: blur(8px);
+            color: white;
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 12px;
+            display: flex; align-items: center; gap: 8px;
+            cursor: pointer; transition: background .15s;
+        }
+        .banner-code-pill:hover { background: rgba(0,0,0,.35); }
+        .code-val { font-weight: 700; letter-spacing: 2px; }
+
+        /* ── Tabs ── */
+        .tabs {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex; padding: 0 28px;
+        }
+        .tab {
+            padding: 14px 18px;
+            font-size: 13.5px; font-weight: 500;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: color .15s, border-color .15s;
+            user-select: none;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* ── Content area ── */
+        .content-wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 48px; }
+
+        /* ── Stream layout ── */
+        .stream-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .stream-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+        .stream-side { width: 256px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+
+        /* ── Assignment stream card ── */
+        .assign-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: box-shadow .2s;
+        }
+        .assign-card:hover { box-shadow: var(--shadow-md); }
+        .assign-card-head {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 18px 12px;
+        }
+        .assign-icon-wrap {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            background: var(--accent-light);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+        .assign-meta { flex: 1; min-width: 0; }
+        .assign-meta-title {
+            font-size: 14px; font-weight: 600; color: var(--text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .assign-meta-sub { font-size: 12px; color: var(--subtle); margin-top: 1px; }
+        .assign-deadline {
+            padding: 0 18px 10px;
+            font-size: 13px; color: var(--muted);
+        }
+        .assign-deadline strong { color: var(--danger); font-weight: 600; }
+        .assign-scheduled {
+            margin: 0 18px 10px;
+            padding: 7px 11px;
+            font-size: 12.5px; color: var(--muted);
+            background: rgba(245,158,11,.10);
+            border: 1px solid rgba(245,158,11,.30);
+            border-radius: 8px;
+        }
+        .assign-scheduled strong { color: #b45309; font-weight: 600; }
+        html[data-theme="dark"] .assign-scheduled strong { color: #fbbf24; }
+        .assign-desc {
+            padding: 0 18px 12px;
+            font-size: 13px; color: var(--muted);
+            line-height: 1.55;
+        }
+        .assign-foot {
+            border-top: 1px solid var(--bg);
+            padding: 8px 12px;
+            display: flex; gap: 4px;
+        }
+        .afoot-btn {
+            padding: 6px 14px; border-radius: 7px; border: none;
+            font-size: 13px; font-weight: 500;
+            cursor: pointer; text-decoration: none;
+            transition: background .15s, color .15s;
+        }
+        .afoot-open { background: var(--accent-light); color: var(--accent); }
+        .afoot-open:hover { background: #dbeafe; }
+        .afoot-del { background: none; color: var(--danger); }
+        .afoot-del:hover { background: var(--danger-light); }
+
+        /* ── Sidebar boxes ── */
+        .side-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .side-box-title {
+            padding: 13px 16px 10px;
+            font-size: 12px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .07em;
+            color: var(--subtle);
+            border-bottom: 1px solid var(--border);
+        }
+        .upcoming-row {
+            display: flex; flex-direction: column;
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--bg);
+            gap: 2px;
+        }
+        .upcoming-row:last-child { border-bottom: none; }
+        .upcoming-name { font-size: 13px; font-weight: 500; color: var(--text); }
+        .upcoming-due { font-size: 11.5px; color: var(--subtle); }
+        .side-empty { padding: 16px; font-size: 13px; color: var(--subtle); text-align: center; }
+
+        /* invite code box */
+        .code-box { padding: 16px; }
+        .code-box-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--subtle); margin-bottom: 8px; }
+        .code-display {
+            font-family: 'Lora', serif;
+            font-size: 24px; font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 4px;
+            margin-bottom: 12px;
+        }
+        .code-btn {
+            width: 100%; padding: 8px; border: none;
+            background: var(--accent-light); color: var(--accent);
+            border-radius: 8px; font-size: 13px; font-weight: 500;
+            cursor: pointer; transition: background .15s;
+        }
+        .code-btn:hover { background: #dbeafe; }
+
+        /* danger */
+        .danger-row { padding: 12px 16px; }
+        .danger-link {
+            font-size: 13px; color: var(--danger); background: none; border: none;
+            cursor: pointer; font-weight: 500; padding: 6px 12px; border-radius: 7px;
+            transition: background .15s;
+        }
+        .danger-link:hover { background: var(--danger-light); }
+
+        /* ── Assignments tab ── */
+        .assign-list { display: flex; flex-direction: column; gap: 8px; }
+        .alist-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            display: flex; align-items: center; gap: 14px;
+            cursor: pointer; box-shadow: var(--shadow);
+            transition: box-shadow .2s, transform .15s;
+        }
+        .alist-item:hover { box-shadow: var(--shadow-md); transform: translateX(2px); }
+        .alist-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            background: var(--accent-light);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0;
+        }
+        .alist-info { flex: 1; min-width: 0; }
+        .alist-title { font-size: 14px; font-weight: 600; color: var(--text); }
+        .alist-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+        .alist-badge {
+            font-size: 11px; font-weight: 500;
+            padding: 3px 9px; border-radius: 20px;
+            background: var(--bg); color: var(--muted);
+            white-space: nowrap;
+        }
+
+        /* ── Empty ── */
+        .stream-empty {
+            background: var(--surface);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 48px 24px;
+            text-align: center;
+        }
+        .stream-empty-icon { font-size: 44px; opacity: .25; margin-bottom: 14px; }
+        .stream-empty-text { font-size: 14px; color: var(--muted); }
+
+        /* ── FAB ── */
+        .fab {
+            position: fixed; bottom: 26px; right: 26px;
+            padding: 12px 22px;
+            background: var(--accent); color: white;
+            border-radius: 14px; border: none;
+            font-size: 14px; font-weight: 600;
+            box-shadow: 0 4px 20px rgba(37,99,235,.35);
+            cursor: pointer; text-decoration: none;
+            display: flex; align-items: center; gap: 8px;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .fab:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(37,99,235,.45); }
+
+        /* tab panels */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Обсуждение ── */
+        .disc-wrap { max-width: 760px; margin: 0 auto; }
+        .disc-intro {
+            font-size: 13px; color: var(--muted); background: var(--surface);
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 16px; line-height: 1.5;
+        }
+        .disc-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+        .disc-post {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px 16px;
+        }
+        .disc-post.is-teacher { background: rgba(22,163,74,.09); border-color: rgba(22,163,74,.35); }
+        .disc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .disc-avatar {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .disc-post.is-teacher .disc-avatar { background: var(--green); }
+        .disc-name { font-size: 14px; font-weight: 600; }
+        .disc-badge {
+            font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+            color: var(--green); background: #dcfce7; border-radius: 20px; padding: 2px 7px;
+        }
+        html[data-theme="dark"] .disc-badge { background: #14532d; color: #bbf7d0; }
+        .disc-date { font-size: 11px; color: var(--subtle); margin-left: auto; }
+        .disc-del {
+            background: none; border: none; color: var(--subtle); cursor: pointer;
+            font-size: 12px; padding: 2px 6px; border-radius: 6px; transition: color .15s, background .15s;
+        }
+        .disc-del:hover { color: var(--danger); background: var(--danger-light); }
+        .disc-text { font-size: 14px; line-height: 1.55; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+        .disc-composer {
+            display: flex; gap: 8px; align-items: flex-end;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 10px 12px; position: sticky; bottom: 16px;
+        }
+        .disc-input {
+            flex: 1; border: none; outline: none; resize: none; background: transparent;
+            font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text);
+            line-height: 1.5; max-height: 140px; min-height: 24px;
+        }
+        .disc-send {
+            flex-shrink: 0; border: none; background: var(--accent); color: #fff;
+            font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+            padding: 9px 16px; border-radius: 8px; cursor: pointer; transition: background .15s;
+        }
+        .disc-send:hover { background: #1d4ed8; }
+        .disc-send:disabled { opacity: .5; cursor: default; }
+
+        @media (max-width: 700px) {
+            .stream-side { display: none; }
+            .content-wrap { padding: 18px 14px 96px; }
+            .banner { padding: 0 18px; }
+            /* Крошка с названием дублируется заголовком баннера ниже — на узком
+               экране прячем, освобождая место под icon-кнопки (Аналитика/
+               Переименовать), иначе правая кнопка вылезала за край (~416px).
+               !important перебивает глобальное правило crumb-current из mobile-nav.js. */
+            .crumb-current { display: none !important; }
+            /* Подписанная FAB не влезает в узкий экран — делаем круглую «+» */
+            .fab {
+                right: 16px !important; bottom: 16px !important;
+                width: 52px !important; height: 52px !important; padding: 0 !important;
+                border-radius: 50% !important; justify-content: center;
+                font-size: 0 !important; gap: 0 !important;
+            }
+            .fab::before { content: "+"; font-size: 30px !important; line-height: 1; }
+            /* >=16px чтобы iOS не зумил при тапе по полю обсуждения */
+            .disc-input { font-size: 16px; }
+        }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/classroom/subjects" class="back-link">← Classroom</a>
+    <span class="crumb-sep">/</span>
+    <span class="crumb-current">{{.Subject.Title}}</span>
+    <div class="topbar-right">
+        {{if eq .UserType "teacher"}}
+        <a class="tb-btn tb-ghost" href="/classroom/subjects/{{.Subject.ID}}/analytics">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>
+            Аналитика
+        </a>
+        {{end}}
+        {{if .IsOwner}}
+        <button class="tb-btn tb-ghost" onclick="openRename()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Переименовать
+        </button>
+        {{end}}
+    </div>
+</header>
+
+{{if .IsOwner}}
+<div id="renameOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <div style="font-size:17px;font-weight:700;margin-bottom:18px;">Редактировать предмет</div>
+        <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Название</label>
+            <input id="renameTitle" type="text" value="{{.Subject.Title}}"
+                style="width:100%;padding:10px 14px;border:1.5px solid #e4e7ec;border-radius:8px;font-size:14px;font-family:inherit;outline:none;"
+                onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e4e7ec'">
+        </div>
+        <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Описание</label>
+            <textarea id="renameDesc" rows="3"
+                style="width:100%;padding:10px 14px;border:1.5px solid #e4e7ec;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;"
+                onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e4e7ec'">{{.Subject.Description}}</textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="closeRename()" style="padding:9px 18px;border:1.5px solid #e4e7ec;border-radius:8px;background:none;font-size:14px;font-weight:600;cursor:pointer;">Отмена</button>
+            <button onclick="saveRename({{.Subject.ID}})" style="padding:9px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Сохранить</button>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<!-- Banner -->
+<div class="banner">
+    <div class="banner-bg" style="background: linear-gradient(130deg, {{bannerColor .Subject.ID}}, {{bannerColor2 .Subject.ID}});"></div>
+    <div class="banner-geo"></div>
+    <div class="banner-geo2"></div>
+    <div class="banner-title">{{.Subject.Title}}</div>
+    {{if .IsOwner}}
+    <button class="banner-code-pill" onclick="copyCode('{{.Subject.InviteCode}}')">
+        🔗 Код: <span class="code-val">{{.Subject.InviteCode}}</span>
+    </button>
+    {{end}}
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+    <div class="tab active" id="t-stream" onclick="showTab('stream')">Задания</div>
+    <div class="tab" id="t-discussion" onclick="showTab('discussion')">Обсуждение</div>
+    {{if eq .UserType "teacher"}}<div class="tab" id="t-students" onclick="showTab('students')">Студенты</div>{{end}}
+</div>
+
+<div class="content-wrap">
+
+    <!-- ЛЕНТА -->
+    <div class="tab-panel active" id="p-stream">
+        <div class="stream-layout">
+            <div class="stream-main">
+                {{if .Assignments}}
+                {{range .Assignments}}
+                <div class="assign-card">
+                    <div class="assign-card-head">
+                        <div class="assign-icon-wrap">📋</div>
+                        <div class="assign-meta">
+                            <div class="assign-meta-title">{{.Title}}</div>
+                            <div class="assign-meta-sub">{{.CreatedAt.Format "02.01.2006"}}</div>
+                        </div>
+                    </div>
+                    {{if .IsScheduled}}
+                    <div class="assign-scheduled">🕓 Запланировано: студенты увидят <strong>{{.PublishAt.Format "02.01.2006, 15:04"}}</strong></div>
+                    {{end}}
+                    {{if .Deadline}}
+                    <div class="assign-deadline">Срок сдачи: <strong>{{.Deadline.Format "02.01.2006, 15:04"}}</strong></div>
+                    {{end}}
+                    {{if .Description}}
+                    <div class="assign-desc">{{.Description}}</div>
+                    {{end}}
+                    <div class="assign-foot">
+                        <a href="/classroom/assignments/{{.ID}}" class="afoot-btn afoot-open">Открыть</a>
+                        {{if eq $.UserType "teacher"}}
+                        <button class="afoot-btn afoot-del" onclick="delAssign({{.ID}})">Удалить</button>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+                {{else}}
+                <div class="stream-empty">
+                    <div class="stream-empty-icon">📭</div>
+                    <div class="stream-empty-text">
+                        Заданий пока нет{{if eq .UserType "teacher"}} — нажмите «+ Задание»{{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+
+            <div class="stream-side">
+                <!-- Предстоящие -->
+                <div class="side-box">
+                    <div class="side-box-title">Предстоящие</div>
+                    {{$any := false}}
+                    {{range .Assignments}}{{if .Deadline}}
+                    {{$any = true}}
+                    <div class="upcoming-row">
+                        <div class="upcoming-name">{{.Title}}</div>
+                        <div class="upcoming-due">{{.Deadline.Format "02.01, 15:04"}}</div>
+                    </div>
+                    {{end}}{{end}}
+                    {{if not $any}}
+                    <div class="side-empty">Нет дедлайнов</div>
+                    {{end}}
+                </div>
+
+                {{if .IsOwner}}
+                <!-- Инвайт-код -->
+                <div class="side-box">
+                    <div class="side-box-title">Инвайт-код</div>
+                    <div class="code-box">
+                        <div class="code-box-label">Для студентов</div>
+                        <div class="code-display">{{.Subject.InviteCode}}</div>
+                        <button class="code-btn" onclick="copyCode('{{.Subject.InviteCode}}')">📋 Скопировать</button>
+                    </div>
+                </div>
+                <!-- Опасная зона -->
+                <div class="side-box">
+                    <div class="danger-row">
+                        <button class="danger-link" onclick="delSubject()">🗑 Удалить предмет</button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <!-- ЗАДАНИЯ -->
+
+</div>
+
+    <!-- ОБСУЖДЕНИЕ -->
+    <div class="tab-panel" id="p-discussion">
+        <div class="disc-wrap">
+            <div class="disc-intro">Общие вопросы по предмету — видят все участники. Личные вопросы по своей работе пишите в чате внутри задания.</div>
+            <div class="disc-list" id="discList">
+                <div class="stream-empty"><div class="stream-empty-text">Загрузка...</div></div>
+            </div>
+            <div class="disc-composer">
+                <textarea id="discInput" class="disc-input" rows="1" maxlength="2000"
+                    placeholder="Задать вопрос или ответить..."
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDiscussion();}"></textarea>
+                <button class="disc-send" id="discSendBtn" onclick="sendDiscussion()">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    {{if eq .UserType "teacher"}}
+    <!-- СТУДЕНТЫ -->
+    <div class="tab-panel" id="p-students">
+        <div class="assign-list" id="studentsList">
+            <div class="stream-empty"><div class="stream-empty-text">Загрузка...</div></div>
+        </div>
+    </div>
+    {{end}}
+
+</div>
+
+{{if eq .UserType "teacher"}}
+<a href="/classroom/subjects/{{.Subject.ID}}/assignments/create" class="fab" id="fabBtn">+ Создать задание</a>
+{{end}}
+
+<script>
+var SUBJECT_ID = {{.Subject.ID}};
+var IS_TEACHER = {{if eq .UserType "teacher"}}true{{else}}false{{end}};
+var studentsLoaded = false;
+
+function showTab(name) {
+    var tabs = IS_TEACHER ? ['stream','discussion','students'] : ['stream','discussion'];
+    tabs.forEach(function(t) {
+        var tb = document.getElementById('t-'+t);
+        var tp = document.getElementById('p-'+t);
+        if (tb) tb.classList.toggle('active', t === name);
+        if (tp) tp.classList.toggle('active', t === name);
+    });
+    var fab = document.getElementById('fabBtn');
+    // FAB создаёт задание — нужен только на ленте заданий
+    if (fab) fab.style.display = (name === 'stream') ? '' : 'none';
+    if (name === 'students' && !studentsLoaded) loadStudents();
+    if (name === 'discussion') loadDiscussion();
+}
+
+function authHeaders(json) {
+    var t = localStorage.getItem('token') || '';
+    var h = t ? { 'Authorization': 'Bearer ' + t } : {};
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+}
+
+function loadDiscussion() {
+    fetch('/api/classroom/subjects/' + SUBJECT_ID + '/discussion', { headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(renderDiscussion)
+        .catch(function() {
+            document.getElementById('discList').innerHTML =
+                '<div class="stream-empty"><div class="stream-empty-text">Ошибка загрузки</div></div>';
+        });
+}
+
+function renderDiscussion(posts) {
+    var list = document.getElementById('discList');
+    if (!posts || posts.length === 0) {
+        list.innerHTML = '<div class="stream-empty"><div class="stream-empty-icon">💬</div>' +
+            '<div class="stream-empty-text">Вопросов пока нет. Будьте первым!</div></div>';
+        return;
+    }
+    list.innerHTML = posts.map(function(p) {
+        var isT = p.user_type === 'teacher' || p.user_type === 'admin';
+        var name = esc(p.user_name || '');
+        var badge = isT ? '<span class="disc-badge">Преподаватель</span>' : '';
+        var del = p.can_delete
+            ? '<button class="disc-del" onclick="delDiscussion(' + p.id + ')">Удалить</button>'
+            : '';
+        return '<div class="disc-post' + (isT ? ' is-teacher' : '') + '">' +
+            '<div class="disc-head">' +
+                '<div class="disc-avatar">' + (name.charAt(0).toUpperCase() || '?') + '</div>' +
+                '<span class="disc-name">' + name + '</span>' +
+                badge +
+                '<span class="disc-date">' + esc(p.created_at || '') + '</span>' +
+                del +
+            '</div>' +
+            '<div class="disc-text">' + esc(p.message || '') + '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function sendDiscussion() {
+    var ta = document.getElementById('discInput');
+    var btn = document.getElementById('discSendBtn');
+    var msg = ta.value.trim();
+    if (!msg) return;
+    btn.disabled = true;
+    fetch('/api/classroom/subjects/' + SUBJECT_ID + '/discussion', {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify({ message: msg })
+    }).then(function(r) {
+        btn.disabled = false;
+        if (r.ok) { ta.value = ''; ta.style.height = ''; loadDiscussion(); }
+        else if (r.status === 429) showToast('Слишком часто, подождите немного', 'warning');
+        else showToast('Не удалось отправить', 'error');
+    }).catch(function() { btn.disabled = false; showToast('Ошибка сети', 'error'); });
+}
+
+function delDiscussion(id) {
+    vmConfirm({
+        title: 'Удалить сообщение?',
+        message: 'Сообщение будет удалено из обсуждения.',
+        danger: true,
+        onConfirm: function() {
+            fetch('/api/classroom/discussion/' + id, { method: 'DELETE', headers: authHeaders() })
+                .then(function(r) { return r.json(); })
+                .then(function(d) { if (d.ok) loadDiscussion(); });
+        }
+    });
+}
+
+function loadStudents() {
+    var token = localStorage.getItem('token') || '';
+    fetch('/api/classroom/subjects/' + SUBJECT_ID + '/students', {
+        headers: token ? {'Authorization': 'Bearer ' + token} : {}
+    }).then(function(r) { return r.json(); })
+      .then(function(data) {
+        studentsLoaded = true;
+        var el = document.getElementById('studentsList');
+        if (!data || data.length === 0) {
+            el.innerHTML = '<div class="stream-empty"><div class="stream-empty-icon">👥</div><div class="stream-empty-text">Студентов пока нет</div></div>';
+            return;
+        }
+        el.innerHTML = data.map(function(s) {
+            return '<div class="alist-item" style="cursor:default">' +
+                '<div class="alist-icon" style="font-size:18px">👤</div>' +
+                '<div class="alist-info">' +
+                    '<div class="alist-title">' + esc(s.FullName) + '</div>' +
+                    '<div class="alist-sub">' + esc(s.Login) + (s.Group ? ' · ' + esc(s.Group) : '') + '</div>' +
+                '</div>' +
+                '<button onclick="removeStudent(' + s.ID + ', this)" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;border-radius:7px;font-size:13px;transition:color .15s,background .15s" onmouseover="this.style.color=\'#dc2626\';this.style.background=\'#fef2f2\'" onmouseout="this.style.color=\'\';this.style.background=\'\'">Удалить</button>' +
+            '</div>';
+        }).join('');
+      }).catch(function() {
+        document.getElementById('studentsList').innerHTML = '<div class="stream-empty"><div class="stream-empty-text">Ошибка загрузки</div></div>';
+      });
+}
+
+function removeStudent(studentId, btn) {
+    vmConfirm({
+        title: 'Удалить студента?',
+        message: 'Студент потеряет доступ к предмету и всем заданиям.',
+        danger: true,
+        onConfirm: function() {
+            var token = localStorage.getItem('token') || '';
+            fetch('/api/classroom/subjects/' + SUBJECT_ID + '/students/' + studentId, {
+                method: 'DELETE',
+                headers: token ? {'Authorization': 'Bearer ' + token} : {}
+            }).then(function(r) { return r.json(); })
+              .then(function(d) {
+                if (d.success) {
+                    studentsLoaded = false;
+                    loadStudents();
+                    showToast('Студент удалён', 'success');
+                }
+              });
+        }
+    });
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function copyCode(code) {
+    copyToClipboard(code, 'Код');
+}
+function delSubject() {
+    vmConfirm({
+        title: 'Удалить предмет?',
+        message: 'Все задания и записи студентов в этом предмете будут удалены.',
+        danger: true,
+        onConfirm: function() {
+            var _t = localStorage.getItem('token') || '';
+            fetch('/classroom/subjects/{{.Subject.ID}}', {method:'DELETE', headers: _t ? {'Authorization':'Bearer '+_t} : {}})
+                .then(function() { location.href = '/classroom/subjects'; });
+        }
+    });
+}
+function delAssign(id) {
+    vmConfirm({
+        title: 'Удалить задание?',
+        message: 'Задание и все работы студентов будут удалены.',
+        danger: true,
+        onConfirm: function() {
+            var _t = localStorage.getItem('token') || '';
+            fetch('/classroom/assignments/' + id, {method:'DELETE', headers: _t ? {'Authorization':'Bearer '+_t} : {}})
+                .then(function(r) { return r.json(); })
+                .then(function(data) { location.href = '/classroom/subjects/' + data.subject_id; });
+        }
+    });
+}
+function openRename() {
+    var el = document.getElementById('renameOverlay');
+    if (el) { el.style.display = 'flex'; }
+}
+function closeRename() {
+    var el = document.getElementById('renameOverlay');
+    if (el) { el.style.display = 'none'; }
+}
+function saveRename(subjectID) {
+    var title = document.getElementById('renameTitle').value.trim();
+    var desc  = document.getElementById('renameDesc').value.trim();
+    if (!title) { showToast('Название не может быть пустым', 'warning'); return; }
+    fetch('/api/classroom/subjects/' + subjectID + '/rename', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({title: title, description: desc})
+    }).then(function(r) {
+        if (r.ok) { location.reload(); }
+        else { r.text().then(function(t) { showToast('Ошибка: ' + t, 'error'); }); }
+    });
+}
+document.getElementById('renameOverlay') && document.getElementById('renameOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeRename();
+});
+</script>
+</body>
+</html>

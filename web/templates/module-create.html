@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать модуль — VisualMath</title>
+    <script>
+        MathJax = {
+            loader: { load: ['[tex]/boldsymbol'] },
+            tex: { packages: { '[+]': ['boldsymbol'] }, inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="/static/vendor/mathjax/es5/tex-mml-chtml.js"></script>
+    <script src="/static/js/format-text.js"></script>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f7; --surface: #fff; --border: #e4e7ec;
+            --text: #1a1d23; --muted: #6b7280; --subtle: #9ca3af;
+            --accent: #2563eb; --accent-light: #eff6ff;
+            --green: #16a34a; --green-light: #dcfce7;
+            --sidebar-w: 260px; --topbar-h: 58px; --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* Topbar */
+        .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; }
+        .topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+        .topbar-logo span { color: var(--accent); }
+
+        /* Sidebar */
+        .sidebar { position: fixed; top: var(--topbar-h); left: 0; bottom: 0; width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+        .sb-section { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--subtle); padding: 14px 10px 5px; }
+        .sb-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--muted); text-decoration: none; transition: all .15s; }
+        .sb-link:hover { background: var(--bg); color: var(--text); }
+        .sb-link svg { flex-shrink: 0; opacity: .75; }
+        .sb-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+        /* Main */
+        .main { margin-left: var(--sidebar-w); padding-top: calc(var(--topbar-h) + 32px); padding-bottom: 60px; padding-left: 36px; padding-right: 36px; max-width: calc(var(--sidebar-w) + 860px); }
+
+        .page-title { font-family: 'Lora', serif; font-size: 24px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .page-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+
+        /* Form card */
+        .form-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 32px 36px; }
+
+        .form-section { margin-bottom: 28px; }
+        .form-section-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--subtle); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 7px; }
+        .form-label .req { color: #dc2626; margin-left: 2px; }
+        .form-input, .form-select, .form-textarea {
+            width: 100%; padding: 11px 14px; border: 1.5px solid var(--border);
+            border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+            color: var(--text); background: var(--surface);
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none; border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+        }
+        .form-textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+        .form-textarea.mono { font-family: 'Courier New', monospace; font-size: 13px; }
+        .form-textarea.tall { min-height: 240px; }
+        .form-hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+        .form-hint code { background: var(--bg); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 11px; }
+
+        /* Type selector */
+        .type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+        .type-card {
+            padding: 18px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+            text-align: center; cursor: pointer; background: var(--surface);
+            transition: border-color .15s, background .15s, box-shadow .15s;
+        }
+        .type-card:hover { border-color: var(--accent); background: var(--accent-light); }
+        .type-card.selected { border-color: var(--green); background: var(--green-light); box-shadow: 0 0 0 3px rgba(22,163,74,.1); }
+        .type-card-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+        .type-card h4 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .type-card p { font-size: 11px; color: var(--muted); line-height: 1.4; }
+        .graph-mode-btn { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif; }
+        .graph-mode-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .graph-mode-btn.gm-active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+        /* Content area */
+        #contentArea { margin-top: 4px; }
+
+        /* LaTeX toolbar */
+        .latex-toolbar { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+        .latex-toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; font-size: 13px; cursor: pointer; font-family: 'Times New Roman', Times, serif; color: var(--text); min-width: 28px; transition: all .12s; }
+        .latex-toolbar button:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+        .lt-sep { width: 1px; height: 20px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+        .lt-label { font-size: 10px; color: var(--subtle); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+
+        /* Preview */
+        .latex-preview { border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-top: 10px; background: var(--bg); min-height: 90px; font-family: 'Times New Roman', Times, serif; font-size: 16px; line-height: 1.7; color: var(--text); }
+        .preview-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--subtle); margin-bottom: 6px; margin-top: 12px; }
+
+        /* Test question block */
+        .tq-block { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 12px; position: relative; }
+        .tq-num { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; }
+        .tq-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 14px; font-family: monospace; height: 90px !important; resize: none !important; overflow-y: auto; display: block; background: var(--surface); color: var(--text); transition: border-color .15s; }
+        .tq-input:focus { outline: none; border-color: var(--accent); }
+        .tq-preview { border: 1px solid var(--border); border-radius: 7px; background: var(--surface); height: 120px; overflow-y: auto; padding: 10px 14px; font-family: 'Times New Roman', Times, serif; font-size: 15px; line-height: 1.5; color: var(--text); margin-top: 2px; }
+        .answer-count-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; font-size: 13px; color: var(--muted); }
+        .answer-count-row select { padding: 5px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface); font-family: 'DM Sans', sans-serif; }
+        .answers-list { display: flex; flex-direction: column; gap: 7px; }
+        .answer-row { display: flex; align-items: center; gap: 8px; }
+        .answer-row input[type=text] { flex: 1; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 14px; background: var(--surface); font-family: 'DM Sans', sans-serif; transition: border-color .15s; }
+        .answer-row input[type=text]:focus { outline: none; border-color: var(--accent); }
+        .answer-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--green); flex-shrink: 0; cursor: pointer; }
+        .answers-hint { font-size: 11px; color: var(--green); margin-top: 5px; }
+        .remove-q-btn { position: absolute; top: 12px; right: 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 16px; line-height: 24px; text-align: center; transition: background .15s; }
+        .remove-q-btn:hover { background: #fca5a5; }
+
+        /* Poll builder (question type) */
+        .poll-option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .poll-option-row input[type=text] { flex: 1; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 14px; background: var(--surface); font-family: 'DM Sans', sans-serif; transition: border-color .15s; }
+        .poll-option-row input[type=text]:focus { outline: none; border-color: var(--accent); }
+        .poll-option-letter { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .poll-remove-opt { background: #fee2e2; color: #dc2626; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 16px; line-height: 24px; text-align: center; flex-shrink: 0; transition: background .15s; }
+        .poll-remove-opt:hover { background: #fca5a5; }
+        .add-q-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1.5px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 8px; transition: all .15s; }
+        .add-q-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Image upload */
+        .image-upload { border: 2px dashed var(--border); border-radius: 8px; padding: 36px 24px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; color: var(--muted); font-size: 14px; }
+        .image-upload:hover, .image-upload.dragover { border-color: var(--accent); background: var(--accent-light); }
+        .image-upload-icon { margin-bottom: 8px; opacity: .4; }
+        .image-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 14px; }
+        .preview-item { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .preview-item img { width: 100%; height: 100px; object-fit: cover; display: block; }
+        .remove-img-btn { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 13px; line-height: 22px; text-align: center; }
+
+        /* Actions */
+        .form-actions { display: flex; gap: 10px; padding-top: 24px; margin-top: 4px; border-top: 1px solid var(--border); }
+        .btn-submit { flex: 1; padding: 13px 20px; background: var(--green); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .15s; }
+        .btn-submit:hover { background: #15803d; }
+        .btn-cancel { padding: 13px 20px; background: var(--surface); border: 1.5px solid var(--border); color: var(--muted); border-radius: 9px; font-size: 14px; font-weight: 600; text-decoration: none; text-align: center; transition: all .15s; }
+        .btn-cancel:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,.15); display: none; }
+        .toast.success { background: var(--green); color: #fff; }
+        .toast.error { background: #dc2626; color: #fff; }
+
+        @media (max-width: 700px) { .sidebar { display: none; } .main { margin-left: 0; padding-left: 16px; padding-right: 16px; } .form-row { grid-template-columns: 1fr; } }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+</header>
+
+<aside class="sidebar">
+    <div class="sb-section">Общее</div>
+    <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Контент</div>
+    <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Библиотека модулей
+    </a>
+    <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Мои лекции
+    </a>
+    <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Начать лекцию
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Classroom</div>
+    <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Мои предметы
+    </a>
+    <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать предмет
+    </a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Создание</div>
+    <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+    </a>
+    <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Создать лекцию
+    </a>
+</aside>
+
+<main class="main">
+    <h1 class="page-title">Новый модуль</h1>
+    <p class="page-sub">Заполните форму для создания учебного модуля</p>
+
+    <form id="createModuleForm" class="form-card">
+
+        <!-- Основное -->
+        <div class="form-section">
+            <div class="form-section-title">Основная информация</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="moduleTitle">Название модуля <span class="req">*</span></label>
+                    <input type="text" id="moduleTitle" name="title" class="form-input" required
+                           placeholder="Например: «Производные функций»">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="moduleCourse">Предмет <span class="req">*</span></label>
+                    <select id="moduleCourse" name="course" class="form-select" required>
+                        <option value="">Выберите предмет</option>
+                        <option>Математический анализ</option>
+                        <option>Линейная алгебра и аналитическая геометрия</option>
+                        <option>Дискретная математика</option>
+                        <option>Экономика</option>
+                        <option>Физика</option>
+                        <option>Дифференциальные уравнения</option>
+                        <option>Литература</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="moduleDescription">Краткое описание</label>
+                <textarea id="moduleDescription" name="description" class="form-textarea"
+                          placeholder="Опишите содержание модуля (необязательно)"></textarea>
+            </div>
+        </div>
+
+        <!-- Тип -->
+        <div class="form-section">
+            <div class="form-section-title">Тип модуля <span style="color:#dc2626">*</span></div>
+            <div class="type-grid">
+                <div class="type-card" data-type="text" onclick="selectModuleType('text')">
+                    <span class="type-card-icon">📝</span>
+                    <h4>Текстовый</h4>
+                    <p>Текст с формулами LaTeX и изображениями</p>
+                </div>
+                <div class="type-card" data-type="question" onclick="selectModuleType('question')">
+                    <span class="type-card-icon">❓</span>
+                    <h4>Вопросник</h4>
+                    <p>Вопросы с вариантами ответов</p>
+                </div>
+                <div class="type-card" data-type="test" onclick="selectModuleType('test')">
+                    <span class="type-card-icon">📋</span>
+                    <h4>Тестовый</h4>
+                    <p>Контрольные и экзаменационные задания</p>
+                </div>
+                <div class="type-card" data-type="graph3d" onclick="selectModuleType('graph3d')">
+                    <span class="type-card-icon">📈</span>
+                    <h4>3D Визуализация</h4>
+                    <p>Интерактивный 3D или 2D график для студентов</p>
+                </div>
+            </div>
+            <input type="hidden" id="moduleType" name="type" required>
+        </div>
+
+        <!-- Dynamic content -->
+        <div id="contentArea"></div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-submit">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>
+                Создать модуль
+            </button>
+            <a href="/modules" class="btn-cancel">Отмена</a>
+        </div>
+    </form>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    let selectedType = '';
+    let activeTextareaId = null;
+
+    function selectModuleType(type) {
+        selectedType = type;
+        document.getElementById('moduleType').value = type;
+        document.querySelectorAll('.type-card').forEach(function(c) { c.classList.remove('selected'); });
+        document.querySelector('[data-type="' + type + '"]').classList.add('selected');
+        updateContentArea(type);
+    }
+
+    function updateContentArea(type) {
+        const contentArea = document.getElementById('contentArea');
+        let html = '';
+
+        switch(type) {
+            case 'text':
+                html = '<div class="form-section">' +
+                       '<div class="form-section-title">Содержимое модуля</div>' +
+                       '<div id="latexToolbarMount"></div>' +
+                       '<div class="form-group">' +
+                       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+                       '<label class="form-label" for="contentText" style="margin:0">Текст модуля <span class="req">*</span></label>' +
+                       '<button type="button" onclick="insertImage()" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer">' +
+                       '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+                       'Вставить изображение</button>' +
+                       '</div>' +
+                       '<textarea id="contentText" name="content" class="form-textarea mono tall" required placeholder="Введите текст лекции..." oninput="updateLaTeXPreview()"></textarea>' +
+                       '<input type="file" id="imageInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)">' +
+                       '<div class="form-hint">Формулы в строке: <code>$E = mc^2$</code> &nbsp;|&nbsp; Блочные: <code>$$\\int_a^b f(x)dx$$</code> &nbsp;|&nbsp; Изображения: <code>![описание](url)</code></div>' +
+                       '</div>' +
+                       '<div class="preview-label">Предпросмотр</div>' +
+                       '<div class="latex-preview"><div id="previewContent"></div></div>' +
+                       '</div>';
+                break;
+
+            case 'question':
+                html = '<div class="form-section">' +
+                       '<div class="form-section-title">Вопрос опросника</div>' +
+                       '<div class="form-group">' +
+                       '<label class="form-label" for="pollQuestion">Текст вопроса <span class="req">*</span></label>' +
+                       '<textarea id="pollQuestion" class="form-textarea" rows="3" placeholder="Например: Как вы оцениваете сложность темы?"></textarea>' +
+                       '</div>' +
+                       '<div class="form-group">' +
+                       '<label class="form-label">Варианты ответов <span class="req">*</span></label>' +
+                       '<div id="pollOptionsContainer"></div>' +
+                       '<button type="button" class="add-q-btn" onclick="addPollOption()" style="margin-top:4px">' +
+                       '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+                       'Добавить вариант</button>' +
+                       '</div>' +
+                       '<div class="form-hint">Студенты выбирают один вариант. Правильных ответов нет — только голосование. Результаты видны после завершения опроса.</div>' +
+                       '</div>';
+                setTimeout(function() { addPollOption(); addPollOption(); }, 50);
+                break;
+
+            case 'test':
+                html = '<div class="form-section">' +
+                       '<div class="form-section-title">Вопросы теста</div>' +
+                       '<div id="latexToolbarMount"></div>' +
+                       '<div id="testQuestionsContainer"></div>' +
+                       '<button type="button" class="add-q-btn" onclick="addTestQuestion()">' +
+                       '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+                       'Добавить вопрос</button></div>' +
+                       '<div class="form-section">' +
+                       '<div class="form-section-title">Параметры выдачи</div>' +
+                       '<div class="form-group">' +
+                       '<label class="form-label" for="questionsCount">Количество вопросов для студента</label>' +
+                       '<input type="number" id="questionsCount" min="0" value="0" class="form-input" style="width:120px" oninput="updateBankModeVis()">' +
+                       '<div class="form-hint">0 — показывать все вопросы. Если указать число, каждый студент получит N вопросов из общего пула.</div>' +
+                       '</div>' +
+                       '<div class="form-group" id="bankModeGroup" style="display:none">' +
+                       '<label class="form-label">Режим выдачи вопросов</label>' +
+                       '<div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">' +
+                       '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;transition:border-color .15s" id="modeCardPerStudent" onclick="selectBankMode(\'per_student\')">' +
+                       '<input type="radio" name="questionsMode" id="modePerStudent" value="per_student" checked style="accent-color:var(--accent);margin-top:2px;flex-shrink:0">' +
+                       '<div><div style="font-size:14px;font-weight:600;margin-bottom:2px">Разные для каждого</div><div style="font-size:12px;color:var(--muted)">Каждый студент получает уникальный случайный набор из пула. Порядок ответов тоже перемешивается.</div></div>' +
+                       '</label>' +
+                       '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;transition:border-color .15s" id="modeCardSameForAll" onclick="selectBankMode(\'same_for_all\')">' +
+                       '<input type="radio" name="questionsMode" id="modeSameForAll" value="same_for_all" style="accent-color:var(--accent);margin-top:2px;flex-shrink:0">' +
+                       '<div><div style="font-size:14px;font-weight:600;margin-bottom:2px">Одинаковые для всех</div><div style="font-size:12px;color:var(--muted)">Все студенты получают один и тот же случайный набор (определяется при первом подключении).</div></div>' +
+                       '</label>' +
+                       '</div></div></div>';
+                setTimeout(function() { addTestQuestion(); }, 50);
+                break;
+
+            case 'graph3d':
+                graphMode = 'surface';
+                html = graphEditorHTML({});
+                break;
+        }
+
+        contentArea.innerHTML = html;
+        activeTextareaId = null;
+
+        const mount = document.getElementById('latexToolbarMount');
+        if (mount) mount.replaceWith(buildLatexToolbar());
+
+        if (type === 'text') {
+            const ta = document.getElementById('contentText');
+            if (ta) { ta.addEventListener('focus', function() { setActiveTextarea('contentText'); }); activeTextareaId = 'contentText'; }
+            updateLaTeXPreview();
+        }
+    }
+
+    function updateLaTeXPreview() {
+        const ta = document.getElementById('contentText');
+        const preview = document.getElementById('previewContent');
+        if (!ta || !preview) return;
+        preview.innerHTML = formatText(ta.value);
+        if (window.MathJax) MathJax.typesetPromise([preview]).catch(function(e) {});
+    }
+
+    function insertImage() {
+        var inp = document.getElementById('imageInput');
+        if (inp) inp.click();
+    }
+
+    async function handleImageUpload(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        var token = localStorage.getItem('token') || '';
+        var fd = new FormData();
+        fd.append('image', file);
+        showToast('Загрузка изображения...', 'info');
+        try {
+            var resp = await fetch('/api/modules/image', { method: 'POST', headers: token ? {'Authorization': 'Bearer ' + token} : {}, body: fd });
+            var data = await resp.json();
+            if (!resp.ok) { showToast('Ошибка: ' + (data.message || 'Не удалось загрузить'), 'error'); return; }
+            var ta = document.getElementById('contentText');
+            if (!ta) return;
+            var pos = ta.selectionStart;
+            var md = '![](' + data.url + ')';
+            ta.value = ta.value.slice(0, pos) + md + ta.value.slice(pos);
+            ta.selectionStart = ta.selectionEnd = pos + md.length;
+            ta.focus();
+            updateLaTeXPreview();
+            showToast('Изображение вставлено', 'success');
+        } catch(e) { showToast('Ошибка сети', 'error'); }
+    }
+
+    // Form submit
+    document.getElementById('createModuleForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const qcEl = document.getElementById('questionsCount');
+        const qmEl = document.querySelector('input[name="questionsMode"]:checked');
+        const formData = {
+            title: document.getElementById('moduleTitle').value,
+            course: document.getElementById('moduleCourse').value,
+            description: document.getElementById('moduleDescription').value,
+            type: document.getElementById('moduleType').value,
+            content: getModuleContent(),
+            questions_count: qcEl ? parseInt(qcEl.value) || 0 : 0,
+            questions_mode: qmEl ? qmEl.value : 'per_student'
+        };
+        if (!formData.title || !formData.course || !formData.type) { showToast('Заполните все обязательные поля', 'error'); return; }
+        if (selectedType === 'text' && !formData.content.text) { showToast('Введите текст модуля', 'error'); return; }
+        if (selectedType === 'question' && (!formData.content.question || !formData.content.options || formData.content.options.length < 2)) { showToast('Введите вопрос и хотя бы 2 варианта ответа', 'error'); return; }
+        if (selectedType === 'test' && (!Array.isArray(formData.content) || formData.content.length === 0)) { showToast('Добавьте хотя бы один вопрос', 'error'); return; }
+
+        try {
+            const _t = localStorage.getItem('token') || '';
+            const _h = { 'Content-Type': 'application/json' };
+            if (_t) _h['Authorization'] = 'Bearer ' + _t;
+            const resp = await fetch('/api/modules', { method: 'POST', headers: _h, body: JSON.stringify(formData) });
+            const result = await resp.json();
+            if (resp.ok) { showToast('Модуль создан! Перенаправление...', 'success'); setTimeout(function() { window.location.href = '/modules'; }, 1800); }
+            else { showToast('Ошибка: ' + (result.message || 'Не удалось создать модуль'), 'error'); }
+        } catch (err) { showToast('Ошибка сети: ' + err.message, 'error'); }
+    });
+
+    function getModuleContent() {
+        switch(selectedType) {
+            case 'text': return { text: document.getElementById('contentText').value };
+            case 'question': return getPollContent();
+            case 'test': return collectTestQuestions();
+            case 'graph3d': return getGraph3dContent();
+            default: return {};
+        }
+    }
+
+    // Test questions
+    var testQuestionCount = 0;
+
+    function addTestQuestion() {
+        testQuestionCount++;
+        var container = document.getElementById('testQuestionsContainer');
+        var qId = 'tq_' + testQuestionCount;
+        var div = document.createElement('div');
+        div.className = 'tq-block';
+        div.id = qId;
+        div.innerHTML =
+            '<div class="tq-num">Вопрос ' + testQuestionCount + '</div>' +
+            '<div class="preview-label">Текст вопроса</div>' +
+            '<textarea class="tq-input" id="' + qId + '_text" placeholder="Текст вопроса... ($E=mc^2$, $$\\int_a^b f(x)dx$$)"></textarea>' +
+            '<div class="preview-label">Предпросмотр</div>' +
+            '<div class="tq-preview" id="' + qId + '_preview"></div>' +
+            '<div class="answer-count-row">Вариантов ответа:' +
+            '<select onchange="updateAnswerCount(\'' + qId + '\', this.value)">' +
+            '<option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option>' +
+            '</select></div>' +
+            '<div class="answers-list" id="' + qId + '_answers"></div>' +
+            '<button type="button" class="remove-q-btn" onclick="removeTestQuestion(\'' + qId + '\')">×</button>';
+        container.appendChild(div);
+        renumberQuestions();
+        var textEl = document.getElementById(qId + '_text');
+        textEl.addEventListener('input', function() { updateQuestionPreview(qId); });
+        textEl.addEventListener('focus', function() { setActiveTextarea(qId + '_text'); });
+        if (!activeTextareaId) activeTextareaId = qId + '_text';
+        updateAnswerCount(qId, 4);
+    }
+
+    function updateQuestionPreview(qId) {
+        var ta = document.getElementById(qId + '_text');
+        var preview = document.getElementById(qId + '_preview');
+        if (!ta || !preview) return;
+        preview.innerHTML = formatText(ta.value);
+        if (window.MathJax) MathJax.typesetPromise([preview]);
+    }
+
+    function updateAnswerCount(qId, count) {
+        var list = document.getElementById(qId + '_answers');
+        var saved = {};
+        list.querySelectorAll('input[type=text]').forEach(function(inp) { saved[inp.id] = inp.value; });
+        var savedChecked = new Set();
+        list.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) { savedChecked.add(parseInt(cb.value)); });
+
+        list.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">' +
+            '<span style="width:20px;text-align:center">✓</span><span>Текст варианта ответа</span></div>';
+        for (var i = 0; i < parseInt(count); i++) {
+            var item = document.createElement('div');
+            item.className = 'answer-row';
+            var prevVal = saved[qId + '_a' + (i+1)] || '';
+            item.innerHTML =
+                '<input type="checkbox" name="correct_' + qId + '" value="' + i + '" ' + (savedChecked.has(i) ? 'checked' : '') + ' title="Отметить как правильный">' +
+                '<input type="text" id="' + qId + '_a' + (i+1) + '" value="' + prevVal + '" placeholder="Вариант ' + (i+1) + '...">';
+            list.appendChild(item);
+        }
+        var hint = document.createElement('div');
+        hint.className = 'answers-hint';
+        hint.textContent = '← Отметьте правильные варианты (можно несколько)';
+        list.appendChild(hint);
+    }
+
+    function removeTestQuestion(qId) {
+        var el = document.getElementById(qId);
+        if (el) { el.remove(); renumberQuestions(); }
+    }
+
+    function renumberQuestions() {
+        document.getElementById('testQuestionsContainer').querySelectorAll('.tq-block').forEach(function(block, idx) {
+            var label = block.querySelector('.tq-num');
+            if (label) label.textContent = 'Вопрос ' + (idx + 1);
+        });
+    }
+
+    function collectTestQuestions() {
+        var container = document.getElementById('testQuestionsContainer');
+        if (!container) return [];
+        var questions = [];
+        container.querySelectorAll('.tq-block').forEach(function(block) {
+            var qId = block.id;
+            var qText = document.getElementById(qId + '_text');
+            if (!qText || !qText.value.trim()) return;
+            var answers = [];
+            block.querySelectorAll('input[type=text]').forEach(function(inp) { if (inp.value.trim()) answers.push(inp.value.trim()); });
+            var correct = [];
+            block.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) { correct.push(parseInt(cb.value)); });
+            questions.push({ question: qText.value.trim(), answers: answers, correct: correct });
+        });
+        return questions;
+    }
+
+    function showToast(text, type) {
+        var t = document.getElementById('toast');
+        t.textContent = text;
+        t.className = 'toast ' + type;
+        t.style.display = 'block';
+        if (type !== 'info') setTimeout(function() { t.style.display = 'none'; }, 4000);
+    }
+
+    // LaTeX toolbar
+    var LATEX_BUTTONS = [
+        { g: 'Структура', items: [
+            { label: 'a/b', latex: '\\frac{}{}', cb: 3, title: 'Дробь' },
+            { label: '√x',  latex: '\\sqrt{}',   cb: 1, title: 'Корень' },
+            { label: 'xⁿ',  latex: '^{}',        cb: 1, title: 'Степень' },
+            { label: 'xₙ',  latex: '_{}',        cb: 1, title: 'Нижний индекс' },
+            { label: '( )', latex: '\\left( \\right)', cb: 8, title: 'Скобки' },
+        ]},
+        { g: '∫ Σ', items: [
+            { label: '∫',    latex: '\\int',               cb: 0, title: 'Интеграл' },
+            { label: '∫ᵃᵇ', latex: '\\int_{a}^{b}',       cb: 0, title: 'Интеграл с пределами' },
+            { label: 'Σ',    latex: '\\sum_{i=1}^{n}',     cb: 0, title: 'Сумма' },
+            { label: '∏',    latex: '\\prod_{i=1}^{n}',    cb: 0, title: 'Произведение' },
+            { label: 'lim',  latex: '\\lim_{x \\to \\infty}', cb: 0, title: 'Предел' },
+        ]},
+        { g: 'Буквы', items: [
+            { label: 'α', latex: '\\alpha' }, { label: 'β', latex: '\\beta'  },
+            { label: 'γ', latex: '\\gamma' }, { label: 'δ', latex: '\\delta' },
+            { label: 'π', latex: '\\pi'    }, { label: 'σ', latex: '\\sigma' },
+            { label: 'θ', latex: '\\theta' }, { label: 'λ', latex: '\\lambda'},
+            { label: 'μ', latex: '\\mu'    }, { label: '∞', latex: '\\infty' },
+        ]},
+        { g: 'Знаки', items: [
+            { label: '≤', latex: '\\leq'   }, { label: '≥', latex: '\\geq'   },
+            { label: '≠', latex: '\\neq'   }, { label: '≈', latex: '\\approx'},
+            { label: '±', latex: '\\pm'    }, { label: '×', latex: '\\times' },
+            { label: '→', latex: '\\to'    }, { label: '⟺', latex: '\\Leftrightarrow'},
+        ]},
+    ];
+
+    function buildLatexToolbar() {
+        var toolbar = document.createElement('div');
+        toolbar.className = 'latex-toolbar';
+        LATEX_BUTTONS.forEach(function(group, gi) {
+            if (gi > 0) { var sep = document.createElement('span'); sep.className = 'lt-sep'; toolbar.appendChild(sep); }
+            var lbl = document.createElement('span'); lbl.className = 'lt-label'; lbl.textContent = group.g + ':'; toolbar.appendChild(lbl);
+            group.items.forEach(function(btn) {
+                var b = document.createElement('button');
+                b.type = 'button'; b.textContent = btn.label; b.title = btn.title || btn.latex;
+                b.addEventListener('mousedown', function(e) { e.preventDefault(); });
+                b.addEventListener('click', function() { insertLatex(btn.latex, btn.cb || 0); });
+                toolbar.appendChild(b);
+            });
+        });
+        return toolbar;
+    }
+
+    function setActiveTextarea(id) { activeTextareaId = id; }
+
+    function isInMathMode(text, pos) {
+        var count = 0, i = 0;
+        while (i < pos) {
+            if (text[i] === '$') { if (i+1 < pos && text[i+1] === '$') i += 2; else i++; count++; } else { i++; }
+        }
+        return count % 2 === 1;
+    }
+
+    function insertLatex(latex, cursorBack) {
+        if (!activeTextareaId) return;
+        var ta = document.getElementById(activeTextareaId);
+        if (!ta) return;
+        var start = ta.selectionStart, end = ta.selectionEnd;
+        var selected = ta.value.substring(start, end);
+        var insert = latex, cb = cursorBack || 0;
+        if (selected && insert.includes('{}')) { insert = insert.replace('{}', '{' + selected + '}'); cb = 0; }
+        if (!isInMathMode(ta.value, start)) { insert = '$' + insert + '$'; if (cb > 0) cb += 1; }
+        ta.value = ta.value.substring(0, start) + insert + ta.value.substring(end);
+        var pos = start + insert.length - cb;
+        ta.setSelectionRange(pos, pos);
+        ta.focus();
+        ta.dispatchEvent(new Event('input'));
+    }
+
+    // Poll builder (question type)
+    var pollOptionCount = 0;
+    var LETTERS = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З'];
+
+    function addPollOption() {
+        var container = document.getElementById('pollOptionsContainer');
+        if (!container) return;
+        var idx = container.querySelectorAll('.poll-option-row').length;
+        if (idx >= 8) return;
+        pollOptionCount++;
+        var row = document.createElement('div');
+        row.className = 'poll-option-row';
+        row.id = 'pollOpt_' + pollOptionCount;
+        row.innerHTML =
+            '<span class="poll-option-letter">' + (LETTERS[idx] || (idx+1)) + '</span>' +
+            '<input type="text" placeholder="Вариант ' + (idx+1) + '...">' +
+            '<button type="button" class="poll-remove-opt" onclick="removePollOption(\'pollOpt_' + pollOptionCount + '\')">×</button>';
+        container.appendChild(row);
+        renumberPollOptions();
+    }
+
+    function removePollOption(id) {
+        var container = document.getElementById('pollOptionsContainer');
+        if (!container) return;
+        if (container.querySelectorAll('.poll-option-row').length <= 2) return;
+        var el = document.getElementById(id);
+        if (el) { el.remove(); renumberPollOptions(); }
+    }
+
+    function renumberPollOptions() {
+        var container = document.getElementById('pollOptionsContainer');
+        if (!container) return;
+        container.querySelectorAll('.poll-option-row').forEach(function(row, idx) {
+            var letter = row.querySelector('.poll-option-letter');
+            if (letter) letter.textContent = LETTERS[idx] || (idx+1);
+            var inp = row.querySelector('input[type=text]');
+            if (inp && !inp.value) inp.placeholder = 'Вариант ' + (idx+1) + '...';
+        });
+    }
+
+    function getPollContent() {
+        var question = (document.getElementById('pollQuestion') || {}).value || '';
+        var options = [];
+        var container = document.getElementById('pollOptionsContainer');
+        if (container) {
+            container.querySelectorAll('.poll-option-row input[type=text]').forEach(function(inp) {
+                if (inp.value.trim()) options.push(inp.value.trim());
+            });
+        }
+        return { question: question.trim(), options: options };
+    }
+
+    var graphMode = 'surface';
+
+    function selectGraphMode(m) {
+        graphMode = m;
+        var map = { surface: ['Surface', 'Surf'], '2d': ['2d', '2d'], param: ['Param', 'Param'] };
+        ['surface', '2d', 'param'].forEach(function(k) {
+            var btn = document.getElementById('gmBtn' + map[k][1]);
+            var panel = document.getElementById('gf' + map[k][0]);
+            if (btn) btn.classList.toggle('gm-active', k === m);
+            if (panel) panel.style.display = k === m ? 'block' : 'none';
+        });
+    }
+
+    function graphEditorHTML(cfg) {
+        cfg = cfg || {};
+        var mode = cfg.mode || 'surface';
+        function v(id, def) { return cfg[id] !== undefined ? cfg[id] : def; }
+        return '<div class="form-section"><div class="form-section-title">Параметры графика</div>' +
+            '<div class="form-group"><label class="form-label">Тип</label>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+            '<button type="button" class="graph-mode-btn' + (mode==='surface'?' gm-active':'') + '" id="gmBtnSurf" onclick="selectGraphMode(\'surface\')">z = f(x, y)</button>' +
+            '<button type="button" class="graph-mode-btn' + (mode==='2d'?' gm-active':'') + '" id="gmBtn2d" onclick="selectGraphMode(\'2d\')">y = f(x)</button>' +
+            '<button type="button" class="graph-mode-btn' + (mode==='param'?' gm-active':'') + '" id="gmBtnParam" onclick="selectGraphMode(\'param\')">Параметрическая</button>' +
+            '</div></div>' +
+            '<div id="gfSurface" style="display:' + (mode==='surface'?'block':'none') + '">' +
+            '<div class="form-group"><label class="form-label">z = f(x, y) <span class="req">*</span></label><input type="text" id="gExprSurf" class="form-input" value="' + v('expr','sin(sqrt(x**2 + y**2))') + '"></div>' +
+            '<div class="form-row"><div class="form-group"><label class="form-label">x min</label><input type="number" id="gSurfXMin" class="form-input" value="' + v('xMin',-5) + '"></div>' +
+            '<div class="form-group"><label class="form-label">x max</label><input type="number" id="gSurfXMax" class="form-input" value="' + v('xMax',5) + '"></div></div>' +
+            '<div class="form-row"><div class="form-group"><label class="form-label">y min</label><input type="number" id="gSurfYMin" class="form-input" value="' + v('yMin',-5) + '"></div>' +
+            '<div class="form-group"><label class="form-label">y max</label><input type="number" id="gSurfYMax" class="form-input" value="' + v('yMax',5) + '"></div></div></div>' +
+            '<div id="gf2d" style="display:' + (mode==='2d'?'block':'none') + '">' +
+            '<div class="form-group"><label class="form-label">y = f(x) <span class="req">*</span></label><input type="text" id="gExpr2d" class="form-input" value="' + v('expr','sin(x)') + '"></div>' +
+            '<div class="form-row"><div class="form-group"><label class="form-label">x min</label><input type="number" id="g2dXMin" class="form-input" value="' + v('xMin',-10) + '"></div>' +
+            '<div class="form-group"><label class="form-label">x max</label><input type="number" id="g2dXMax" class="form-input" value="' + v('xMax',10) + '"></div></div></div>' +
+            '<div id="gfParam" style="display:' + (mode==='param'?'block':'none') + '">' +
+            '<div class="form-group"><label class="form-label">x(u, v) <span class="req">*</span></label><input type="text" id="gPX" class="form-input" value="' + v('px','cos(u)*sin(v)') + '"></div>' +
+            '<div class="form-group"><label class="form-label">y(u, v) <span class="req">*</span></label><input type="text" id="gPY" class="form-input" value="' + v('py','sin(u)*sin(v)') + '"></div>' +
+            '<div class="form-group"><label class="form-label">z(u, v) <span class="req">*</span></label><input type="text" id="gPZ" class="form-input" value="' + v('pz','cos(v)') + '"></div>' +
+            '<div class="form-row"><div class="form-group"><label class="form-label">u min</label><input type="number" id="gUMin" class="form-input" value="' + v('uMin',0) + '"></div>' +
+            '<div class="form-group"><label class="form-label">u max</label><input type="number" id="gUMax" class="form-input" value="' + v('uMax',6.283) + '"></div></div>' +
+            '<div class="form-row"><div class="form-group"><label class="form-label">v min</label><input type="number" id="gVMin" class="form-input" value="' + v('vMin',0) + '"></div>' +
+            '<div class="form-group"><label class="form-label">v max</label><input type="number" id="gVMax" class="form-input" value="' + v('vMax',3.14159) + '"></div></div></div>' +
+            '<div class="form-group"><label class="form-label">Разрешение сетки</label>' +
+            '<input type="number" id="gRes" class="form-input" value="' + v('res',50) + '" min="10" max="100" style="width:120px">' +
+            '<div class="form-hint">Количество точек сетки (10–100). 50 — оптимально.</div></div></div>';
+    }
+
+    function getGraph3dContent() {
+        var m = graphMode || 'surface';
+        var res = parseInt((document.getElementById('gRes')||{}).value) || 50;
+        if (m === 'surface') {
+            return { mode:'surface', expr:document.getElementById('gExprSurf').value,
+                xMin:parseFloat(document.getElementById('gSurfXMin').value), xMax:parseFloat(document.getElementById('gSurfXMax').value),
+                yMin:parseFloat(document.getElementById('gSurfYMin').value), yMax:parseFloat(document.getElementById('gSurfYMax').value), res:res };
+        } else if (m === '2d') {
+            return { mode:'2d', expr:document.getElementById('gExpr2d').value,
+                xMin:parseFloat(document.getElementById('g2dXMin').value), xMax:parseFloat(document.getElementById('g2dXMax').value), res:res };
+        } else {
+            return { mode:'param',
+                px:document.getElementById('gPX').value, py:document.getElementById('gPY').value, pz:document.getElementById('gPZ').value,
+                uMin:parseFloat(document.getElementById('gUMin').value), uMax:parseFloat(document.getElementById('gUMax').value),
+                vMin:parseFloat(document.getElementById('gVMin').value), vMax:parseFloat(document.getElementById('gVMax').value), res:res };
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() { selectModuleType('text'); });
+
+    function updateBankModeVis() {
+        var qc = parseInt((document.getElementById('questionsCount') || {}).value) || 0;
+        var group = document.getElementById('bankModeGroup');
+        if (!group) return;
+        var wasHidden = group.style.display === 'none';
+        group.style.display = qc > 0 ? '' : 'none';
+        if (qc > 0 && wasHidden) {
+            // Подсветить текущий выбранный вариант при первом появлении блока
+            var checked = document.querySelector('input[name="questionsMode"]:checked');
+            selectBankMode(checked ? checked.value : 'per_student');
+        }
+    }
+
+    function selectBankMode(mode) {
+        var perCard = document.getElementById('modeCardPerStudent');
+        var sameCard = document.getElementById('modeCardSameForAll');
+        if (perCard) perCard.style.borderColor = mode === 'per_student' ? 'var(--accent)' : 'var(--border)';
+        if (sameCard) sameCard.style.borderColor = mode === 'same_for_all' ? 'var(--accent)' : 'var(--border)';
+        var radio = document.getElementById(mode === 'per_student' ? 'modePerStudent' : 'modeSameForAll');
+        if (radio) radio.checked = true;
+    }
+</script>
+</body>
+</html>

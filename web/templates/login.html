@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — VisualMath</title>
+    <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+    <style>
+        :root { --border: #e4e7ec; --text: #1a1d23; --muted: #6b7280; --accent: #2563eb; --accent-light: #eff6ff; --radius: 12px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: #f4f5f7; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+
+        .card { background: #fff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 24px rgba(0,0,0,.06); width: 100%; max-width: 400px; overflow: hidden; animation: fadeUp .4s ease both; }
+
+        .card-top { background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 28px 32px; display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; }
+        .card-top::after { content: ''; position: absolute; right: -20px; top: -20px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.07); }
+        .logo-mark { width: 40px; height: 40px; background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.3); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 18px; font-weight: 700; color: white; flex-shrink: 0; }
+        .logo-text { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: white; }
+        .logo-sub { font-size: 12px; color: rgba(255,255,255,.65); }
+
+        .card-body { padding: 28px 32px 32px; }
+
+        .form-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
+
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .field input {
+            width: 100%; padding: 10px 14px;
+            border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 15px; font-family: 'DM Sans', sans-serif;
+            outline: none; transition: border .2s, box-shadow .2s;
+            background: #fff; color: var(--text);
+        }
+        .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+        .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+        .msg.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .btn-primary {
+            width: 100%; padding: 12px; border: none; border-radius: 9px;
+            background: var(--accent); color: #fff;
+            font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: background .15s; margin-top: 6px;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+
+        /* Разделитель */
+        .divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .divider span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+        /* Кнопки социальных сетей */
+        .social-btns { display: flex; gap: 10px; }
+        .btn-social {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 9px;
+            padding: 10px 14px; border-radius: 9px; border: 1.5px solid var(--border);
+            font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+            cursor: pointer; text-decoration: none; transition: border-color .15s, box-shadow .15s, background .15s;
+            color: var(--text); background: #fff;
+        }
+        .btn-social:hover { border-color: #aab4be; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+        .btn-social img { width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0; }
+
+        .btn-social.btn-vk:hover { border-color: #0077FF; background: #f0f7ff; }
+        .btn-social.btn-ya:hover { border-color: #FC3F1D; background: #fff5f3; }
+
+        .links { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: center; gap: 20px; }
+        .links a { font-size: 13px; color: var(--accent); text-decoration: none; }
+        .links a:hover { text-decoration: underline; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/breadcrumbs.js"></script>
+    <script src="/static/js/search.js"></script>
+</head>
+<body>
+    <div class="card">
+        <div class="card-top">
+            <div class="logo-mark"><svg width="22" height="22" viewBox="0 0 32 32" fill="none"><path d="M7 25 H25 M7 25 V7" stroke="rgba(255,255,255,.5)" stroke-width="1.6" stroke-linecap="round"/><path d="M8 9 Q16 30 24 9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+            <div>
+                <div class="logo-text">VisualMath</div>
+                <div class="logo-sub">Платформа для математики</div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="form-title">Вход в аккаунт</div>
+            <div id="message" class="msg"></div>
+            <form id="loginForm">
+                <div class="field">
+                    <label for="login">Логин или Email</label>
+                    <input type="text" id="login" name="login" placeholder="Введите логин или email" required>
+                </div>
+                <div class="field">
+                    <label for="password">Пароль</label>
+                    <input type="password" id="password" name="password" placeholder="Введите пароль" required>
+                </div>
+                <button type="submit" class="btn-primary">Войти</button>
+            </form>
+
+            <div class="divider"><span>или войдите через</span></div>
+
+            <div class="social-btns">
+                <a href="/auth/vk" class="btn-social btn-vk">
+                    <img src="/static/img/vk-icon.svg" alt="VK">
+                    ВКонтакте
+                </a>
+                <a href="/auth/yandex" class="btn-social btn-ya">
+                    <img src="/static/img/ya-icon.svg" alt="Яндекс">
+                    Яндекс
+                </a>
+            </div>
+
+            <div class="links">
+                <a href="/register">Создать аккаунт</a>
+                <a href="/">На главную</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Показываем ошибку OAuth если провайдер вернул error
+        (function() {
+            const errMap = {
+                'invalid_state': 'Ошибка безопасности. Попробуйте ещё раз.',
+                'oauth_failed': 'Не удалось получить данные от провайдера.',
+                'account_error': 'Ошибка создания аккаунта. Обратитесь к администратору.',
+                'no_code': 'Авторизация отменена.',
+            };
+            const params = new URLSearchParams(location.search);
+            const e = params.get('error');
+            if (e) {
+                const msg = document.getElementById('message');
+                msg.className = 'msg error';
+                msg.textContent = errMap[e] || 'Ошибка входа через внешний сервис.';
+                msg.style.display = 'block';
+            }
+        })();
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const msg = document.getElementById('message');
+            msg.style.display = 'none';
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login: document.getElementById('login').value, password: document.getElementById('password').value })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.className = 'msg success'; msg.textContent = 'Вход выполнен! Перенаправление...'; msg.style.display = 'block';
+                    if (data.token) localStorage.setItem('token', data.token);
+                    setTimeout(() => { window.location.href = '/dashboard'; }, 900);
+                } else {
+                    msg.className = 'msg error'; msg.textContent = data.message || 'Неверный логин или пароль'; msg.style.display = 'block';
+                }
+            } catch(err) {
+                msg.className = 'msg error'; msg.textContent = 'Ошибка сети: ' + err.message; msg.style.display = 'block';
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', async function() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/sessions/active', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    window.location.href = '/dashboard';
+                } else {
+                    localStorage.removeItem('token');
+                }
+            } catch(e) {
+                localStorage.removeItem('token');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Графики — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<style>
+:root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #e4e7ec;
+    --text: #1a1d23;
+    --muted: #6b7280;
+    --subtle: #9ca3af;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --sidebar-w: 300px;
+    --topbar-h: 58px;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Topbar */
+.topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--topbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 24px; gap: 16px;
+    flex-shrink: 0;
+}
+.topbar-logo { font-family: 'Lora', serif; font-weight: 600; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -.3px; }
+.topbar-logo span { color: var(--accent); }
+.topbar-title { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.topbar-sep { color: var(--border); font-size: 18px; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.btn-back {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 13px; font-weight: 500;
+    text-decoration: none; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: all .15s;
+}
+.btn-back:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Layout */
+.layout { display: flex; margin-top: var(--topbar-h); flex: 1; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: 16px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 12px;
+}
+.section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--subtle);
+    padding: 6px 0 2px;
+}
+.field { display: flex; flex-direction: column; gap: 5px; }
+label {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+}
+
+/* Mode tabs */
+.mode-tabs {
+    display: flex; border: 1.5px solid var(--border);
+    border-radius: 8px; overflow: hidden; background: var(--bg);
+}
+.mode-tab {
+    flex: 1; padding: 7px; text-align: center;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    color: var(--muted); background: transparent; border: none;
+    transition: all .15s; font-family: 'DM Sans', sans-serif;
+}
+.mode-tab.active { background: var(--accent); color: #fff; }
+
+/* Inputs */
+input[type=text], input[type=number] {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 8px 10px;
+    color: var(--text); font-size: 13px;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    width: 100%; outline: none; transition: border-color .15s;
+}
+input:focus { border-color: var(--accent); background: var(--surface); }
+input::placeholder { color: var(--subtle); }
+.range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Plot button */
+.btn-plot {
+    background: var(--accent); color: #fff; border: none;
+    padding: 9px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    width: 100%; transition: opacity .15s;
+    font-family: 'DM Sans', sans-serif;
+}
+.btn-plot:hover { opacity: .88; }
+.btn-plot:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; opacity: 1; }
+
+/* Error */
+.err { color: #dc2626; font-size: 12px; min-height: 16px; font-weight: 500; }
+
+/* Divider */
+.divider { height: 1px; background: var(--border); }
+
+/* Example chips */
+.examples { display: flex; flex-direction: column; gap: 4px; }
+.chip {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; text-align: left;
+    cursor: pointer; color: var(--text); font-size: 12px;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    transition: border-color .15s, color .15s, background .15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+/* Hint */
+.hint { font-size: 11px; color: var(--subtle); line-height: 1.5; }
+.hint code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; font-size: 11px; }
+
+/* View controls (3D) */
+.toggle-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 500; color: var(--text);
+    text-transform: none; letter-spacing: 0; cursor: pointer; user-select: none;
+}
+.toggle-row input[type=checkbox] {
+    width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; margin: 0;
+}
+input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 5px; border-radius: 4px;
+    background: var(--border); outline: none; cursor: pointer; padding: 0;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+input[type=range]::-moz-range-thumb {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: 2px solid #fff;
+}
+.opacity-label { display: flex; justify-content: space-between; align-items: baseline; }
+.opacity-label span { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.btn-reset {
+    background: var(--bg); border: 1.5px solid var(--border);
+    color: var(--muted); border-radius: 8px; padding: 7px;
+    font-size: 12px; font-weight: 600; cursor: pointer; width: 100%;
+    font-family: 'DM Sans', sans-serif; transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Plot area */
+.plot-area { flex: 1; position: relative; min-width: 0; background: var(--bg); }
+#plot { width: 100%; height: 100%; }
+
+/* No graph banner */
+.no-graph {
+    position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #fef2f2; color: #dc2626; padding: 10px 20px;
+    border-radius: 8px; border: 1px solid #fca5a5;
+    font-size: 13px; font-weight: 500; display: none;
+    pointer-events: none; white-space: nowrap;
+    box-shadow: var(--shadow);
+}
+.no-graph.visible { display: block; }
+
+/* Desc bar */
+.desc-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,.92); border-top: 1px solid var(--border);
+    padding: 8px 16px; font-size: 13px; color: var(--text);
+    display: none; align-items: center; gap: 10px;
+    backdrop-filter: blur(4px);
+}
+.desc-bar.visible { display: flex; }
+.desc-badge {
+    background: var(--accent); color: #fff;
+    padding: 2px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+}
+
+/* Мобильная версия: панель параметров — выезжающий drawer (mobile-nav.js),
+   график занимает всю ширину и виден целиком. */
+@media (max-width: 700px) {
+    .topbar-sep, .topbar-title { display: none; }
+    .topbar { padding: 0 12px; gap: 10px; }
+    /* sidebar mobile-nav.js делает fixed-drawer'ом — он вне потока,
+       поэтому .plot-area занимает всю ширину автоматически */
+    .desc-bar { font-size: 12px; padding: 8px 12px; }
+}
+</style>
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/mobile-nav.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+    <a href="/dashboard" class="topbar-logo">Visual<span>Math</span></a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-title">Графики</span>
+    <div class="topbar-right">
+        <a href="/dashboard" class="btn-back">← Назад</a>
+    </div>
+</div>
+
+<div class="layout">
+<div class="sidebar">
+
+    <div class="field">
+        <label>Режим</label>
+        <div class="mode-tabs">
+            <button class="mode-tab" id="tab2d" onclick="switchMode('2d')">2D y=f(x)</button>
+            <button class="mode-tab active" id="tab3d" onclick="switchMode('3d')">3D поверхность</button>
+        </div>
+    </div>
+
+    <!-- 2D -->
+    <div id="panel2d" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field">
+            <label>y = f(x)</label>
+            <input type="text" id="expr2d" value="sin(x)" placeholder="sin(x), x**2 - 4">
+        </div>
+        <div class="field">
+            <label>Диапазон x</label>
+            <div class="range-row">
+                <input type="number" id="x2dMin" value="-10">
+                <input type="number" id="x2dMax" value="10">
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D -->
+    <div id="panel3d" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="field">
+            <label>Тип 3D</label>
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tabSurf" onclick="set3dType('surface')">z = f(x,y)</button>
+                <button class="mode-tab" id="tabParam" onclick="set3dType('param')">Параметрич.</button>
+            </div>
+        </div>
+
+        <div id="surfaceFields" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="field">
+                <label>z = f(x, y)</label>
+                <input type="text" id="exprSurf" value="sin(sqrt(x**2 + y**2))">
+            </div>
+            <div class="field">
+                <label>Диапазон x</label>
+                <div class="range-row">
+                    <input type="number" id="surfXMin" value="-5">
+                    <input type="number" id="surfXMax" value="5">
+                </div>
+            </div>
+            <div class="field">
+                <label>Диапазон y</label>
+                <div class="range-row">
+                    <input type="number" id="surfYMin" value="-5">
+                    <input type="number" id="surfYMax" value="5">
+                </div>
+            </div>
+        </div>
+
+        <div id="paramFields" style="display:none;flex-direction:column;gap:12px;">
+            <div class="field"><label>x(u, v)</label><input type="text" id="pxExpr" value="cos(u)*sin(v)"></div>
+            <div class="field"><label>y(u, v)</label><input type="text" id="pyExpr" value="sin(u)*sin(v)"></div>
+            <div class="field"><label>z(u, v)</label><input type="text" id="pzExpr" value="cos(v)"></div>
+            <div class="field">
+                <label>Диапазон u</label>
+                <div class="range-row">
+                    <input type="number" id="paramUMin" value="0">
+                    <input type="number" id="paramUMax" value="6.283">
+                </div>
+            </div>
+            <div class="field">
+                <label>Диапазон v</label>
+                <div class="range-row">
+                    <input type="number" id="paramVMin" value="0">
+                    <input type="number" id="paramVMax" value="3.14159">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="field">
+        <label>Разрешение</label>
+        <input type="number" id="res" value="60" min="10" max="200" step="10">
+    </div>
+
+    <div class="err" id="errMsg"></div>
+    <button class="btn-plot" id="btnPlot" onclick="plot()">Построить</button>
+
+    <p class="hint">Синтаксис: <code>sin</code>, <code>cos</code>, <code>sqrt</code>, <code>exp</code>, <code>log</code>, <code>abs</code>, <code>pi</code>, <code>e</code>, <code>x**2</code></p>
+
+    <!-- Контролы отображения (только 3D) -->
+    <div id="viewControls" style="display:flex;flex-direction:column;gap:11px;">
+        <div class="divider"></div>
+        <div class="section-label">Отображение</div>
+        <div class="field">
+            <div class="opacity-label">
+                <label style="margin:0;">Непрозрачность</label>
+                <span id="opacityVal">100%</span>
+            </div>
+            <input type="range" id="opacitySlider" min="30" max="100" value="100" step="5" oninput="onOpacity(this.value)">
+        </div>
+        <label class="toggle-row"><input type="checkbox" id="contoursToggle" checked onchange="onContours(this.checked)"> Контуры (линии уровня)</label>
+        <label class="toggle-row"><input type="checkbox" id="wireframeToggle" onchange="onWireframe(this.checked)"> Каркас (сетка)</label>
+        <button class="btn-reset" onclick="resetView()">⟲ Сбросить вид</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-label">Примеры</div>
+    <div class="examples" id="examplesList"></div>
+
+</div>
+
+<div class="plot-area">
+    <div id="plot"></div>
+    <div class="no-graph" id="noGraph">⚠ Такого графика не существует</div>
+    <div class="desc-bar" id="descBar">
+        <span class="desc-badge" id="descBadge">Тип</span>
+        <span id="descText"></span>
+    </div>
+</div>
+</div>
+
+<script src="/static/vendor/plotly/plotly-2.27.0.min.js"></script>
+<script>
+var mode = '3d', mode3d = 'surface';
+
+function pyToJs(expr) {
+    return expr
+        .replace(/\*\*/g, '^')
+        .replace(/\bsin\b/g,   'Math.sin')
+        .replace(/\bcos\b/g,   'Math.cos')
+        .replace(/\btan\b/g,   'Math.tan')
+        .replace(/\basin\b/g,  'Math.asin')
+        .replace(/\bacos\b/g,  'Math.acos')
+        .replace(/\batan2\b/g, 'Math.atan2')
+        .replace(/\batan\b/g,  'Math.atan')
+        .replace(/\bsinh\b/g,  'Math.sinh')
+        .replace(/\bcosh\b/g,  'Math.cosh')
+        .replace(/\btanh\b/g,  'Math.tanh')
+        .replace(/\bsqrt\b/g,  'Math.sqrt')
+        .replace(/\bcbrt\b/g,  'Math.cbrt')
+        .replace(/\bexp\b/g,   'Math.exp')
+        .replace(/\blog10\b/g, 'Math.log10')
+        .replace(/\blog2\b/g,  'Math.log2')
+        .replace(/\blog\b/g,   'Math.log')
+        .replace(/\babs\b/g,   'Math.abs')
+        .replace(/\bfloor\b/g, 'Math.floor')
+        .replace(/\bceil\b/g,  'Math.ceil')
+        .replace(/\bpow\b/g,   'Math.pow')
+        .replace(/\bmin\b/g,   'Math.min')
+        .replace(/\bmax\b/g,   'Math.max')
+        .replace(/\bpi\b/g,    'Math.PI')
+        .replace(/\be\b/g,     'Math.E')
+        .replace(/\^/g,        '**');
+}
+
+function makeFn(expr, vars) {
+    var js = pyToJs(expr);
+    return new Function(vars[0], vars[1] !== undefined ? vars[1] : '_', '"use strict"; return (' + js + ');');
+}
+
+var EXAMPLES = {
+    '2d': [
+        { label:'sin(x)',       e2:'sin(x)',          xMin:-10, xMax:10 },
+        { label:'x**2 - 4',    e2:'x**2 - 4',        xMin:-5,  xMax:5  },
+        { label:'x**3 - 3*x',  e2:'x**3 - 3*x',      xMin:-4,  xMax:4  },
+        { label:'exp(x)',       e2:'exp(x)',           xMin:-3,  xMax:3  },
+        { label:'log(x)',       e2:'log(x)',           xMin:0.1, xMax:10 },
+        { label:'abs(x) - 2',  e2:'abs(x) - 2',       xMin:-5,  xMax:5  },
+    ],
+    'surf': [
+        { label:'Волны (sinc)',  es:'sin(sqrt(x**2+y**2))', xMin:-10,xMax:10,yMin:-10,yMax:10 },
+        { label:'Параболоид',   es:'x**2 + y**2',          xMin:-5, xMax:5, yMin:-5, yMax:5  },
+        { label:'Седло',        es:'x**2 - y**2',          xMin:-5, xMax:5, yMin:-5, yMax:5  },
+        { label:'Гауссиана',    es:'exp(-(x**2+y**2)/4)',  xMin:-5, xMax:5, yMin:-5, yMax:5  },
+        { label:'Плоскость',    es:'2*x + 3*y + 1',        xMin:-5, xMax:5, yMin:-5, yMax:5  },
+        { label:'Конус',        es:'sqrt(x**2 + y**2)',    xMin:-5, xMax:5, yMin:-5, yMax:5  },
+    ],
+    'param': [
+        { label:'Сфера',   px:'cos(u)*sin(v)', py:'sin(u)*sin(v)', pz:'cos(v)',                uMin:0,   uMax:6.283, vMin:0,  vMax:3.14159 },
+        { label:'Тор',     px:'(2+cos(v))*cos(u)', py:'(2+cos(v))*sin(u)', pz:'sin(v)',        uMin:0,   uMax:6.283, vMin:0,  vMax:6.283   },
+        { label:'Цилиндр', px:'cos(u)', py:'sin(u)', pz:'v',                                   uMin:0,   uMax:6.283, vMin:-2, vMax:2       },
+        { label:'Улитка',  px:'u*cos(v)', py:'u*sin(v)', pz:'log(u+0.1)',                       uMin:0.1, uMax:5,     vMin:0,  vMax:6.283   },
+    ],
+};
+
+function renderExamples() {
+    var key = mode==='2d' ? '2d' : (mode3d==='surface' ? 'surf' : 'param');
+    var el = document.getElementById('examplesList');
+    el.innerHTML = '';
+    EXAMPLES[key].forEach(function(ex) {
+        var btn = document.createElement('button');
+        btn.className = 'chip';
+        btn.textContent = ex.label;
+        btn.onclick = function() { loadExample(ex); };
+        el.appendChild(btn);
+    });
+}
+
+function loadExample(ex) {
+    if (mode==='2d') {
+        document.getElementById('expr2d').value = ex.e2;
+        document.getElementById('x2dMin').value = ex.xMin;
+        document.getElementById('x2dMax').value = ex.xMax;
+    } else if (mode3d==='surface') {
+        document.getElementById('exprSurf').value = ex.es;
+        document.getElementById('surfXMin').value = ex.xMin;
+        document.getElementById('surfXMax').value = ex.xMax;
+        document.getElementById('surfYMin').value = ex.yMin;
+        document.getElementById('surfYMax').value = ex.yMax;
+    } else {
+        document.getElementById('pxExpr').value = ex.px;
+        document.getElementById('pyExpr').value = ex.py;
+        document.getElementById('pzExpr').value = ex.pz;
+        document.getElementById('paramUMin').value = ex.uMin;
+        document.getElementById('paramUMax').value = ex.uMax;
+        document.getElementById('paramVMin').value = ex.vMin;
+        document.getElementById('paramVMax').value = ex.vMax;
+    }
+    plot();
+}
+
+function switchMode(m) {
+    mode = m;
+    document.getElementById('tab2d').classList.toggle('active', m==='2d');
+    document.getElementById('tab3d').classList.toggle('active', m==='3d');
+    document.getElementById('panel2d').style.display = m==='2d' ? 'flex' : 'none';
+    document.getElementById('panel3d').style.display = m==='3d' ? 'flex' : 'none';
+    document.getElementById('viewControls').style.display = m==='3d' ? 'flex' : 'none';
+    renderExamples();
+}
+
+function set3dType(t) {
+    mode3d = t;
+    document.getElementById('tabSurf').classList.toggle('active', t==='surface');
+    document.getElementById('tabParam').classList.toggle('active', t==='param');
+    document.getElementById('surfaceFields').style.display = t==='surface' ? 'flex' : 'none';
+    document.getElementById('paramFields').style.display   = t==='param'   ? 'flex' : 'none';
+    renderExamples();
+}
+
+function linspace(a, b, n) {
+    var arr = new Array(n), step = (b-a)/(n-1);
+    for (var i=0;i<n;i++) arr[i] = a + i*step;
+    return arr;
+}
+
+var C = {
+    bg: '#f4f5f7',
+    surface: '#ffffff',
+    text: '#1a1d23',
+    textDim: '#6b7280',
+    grid: '#e4e7ec',
+    axisColor: '#374151',
+    accent: '#2563eb',
+    accentLight: '#93c5fd',
+    lineColor: '#2563eb',
+};
+
+// Фирменная синяя палитра по высоте: светло-голубой → синий → насыщенный → тёмный.
+// Выраженный градиент, чтобы высота читалась без панели цветовой шкалы.
+var BLUE_SCALE = [[0,'#dbeafe'],[0.3,'#93c5fd'],[0.55,'#3b82f6'],[0.78,'#1d4ed8'],[1,'#172554']];
+
+// Камера по умолчанию — для кнопки «Сбросить вид».
+var DEFAULT_CAMERA = {eye:{x:1.6, y:1.6, z:1.3}};
+
+// Состояние отображения 3D-поверхности (управляется контролами в сайдбаре).
+var viewState = { opacity: 1.0, contours: true, wireframe: false };
+
+// Строит trace поверхности с учётом текущего состояния отображения.
+function surfaceTrace(x, y, z) {
+    return {
+        type: 'surface', x: x, y: y, z: z,
+        colorscale: BLUE_SCALE,
+        opacity: viewState.opacity,
+        showscale: false,
+        hidesurface: viewState.wireframe,
+        lighting: {ambient:0.62, diffuse:0.9, specular:0.18, roughness:0.45, fresnel:0.15},
+        lightposition: {x:100, y:200, z:300},
+        contours: {
+            x: {show: viewState.wireframe, color:'#64748b', width:1},
+            y: {show: viewState.wireframe, color:'#64748b', width:1},
+            z: viewState.contours
+                ? {show:true, usecolormap:true, width:2, project:{z:true}}
+                : {show:false}
+        }
+    };
+}
+
+// Применяет изменения отображения к уже построенному графику без полного перестроения.
+function restyleSurface() {
+    var el = document.getElementById('plot');
+    if (!el || !el.data || !el.data.length) return;
+    Plotly.restyle('plot', {
+        opacity: viewState.opacity,
+        hidesurface: viewState.wireframe,
+        'contours.x.show': viewState.wireframe,
+        'contours.y.show': viewState.wireframe,
+        'contours.z.show': viewState.contours,
+    }, [0]);
+}
+
+function onOpacity(v) {
+    viewState.opacity = parseInt(v) / 100;
+    document.getElementById('opacityVal').textContent = v + '%';
+    restyleSurface();
+}
+function onContours(checked) { viewState.contours = checked; restyleSurface(); }
+function onWireframe(checked) { viewState.wireframe = checked; restyleSurface(); }
+function resetView() {
+    var el = document.getElementById('plot');
+    if (el && el.data && el.data.length) {
+        Plotly.relayout('plot', {'scene.camera': DEFAULT_CAMERA});
+    }
+}
+
+function axisStyle(title) {
+    return {
+        title: {text: title, font: {size: 15, color: C.axisColor, family: 'DM Sans,sans-serif'}},
+        showbackground: true,
+        backgroundcolor: 'rgba(241,245,249,0.6)',
+        showgrid: true,
+        gridcolor: '#cbd5e1',
+        gridwidth: 1,
+        showline: true,
+        linecolor: C.axisColor,
+        linewidth: 2,
+        zeroline: true,
+        zerolinecolor: '#64748b',
+        zerolinewidth: 2,
+        tickfont: {size: 11, color: C.textDim},
+        showspikes: false,
+        nticks: 7,
+    };
+}
+
+function bounds3D(traces) {
+    var xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity,zmin=Infinity,zmax=-Infinity;
+    traces.forEach(function(t){
+        t.x.forEach(function(row){row.forEach(function(v){if(v!==null&&isFinite(v)){xmin=Math.min(xmin,v);xmax=Math.max(xmax,v);}});});
+        t.y.forEach(function(row){row.forEach(function(v){if(v!==null&&isFinite(v)){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v);}});});
+        t.z.forEach(function(row){row.forEach(function(v){if(v!==null&&isFinite(v)){zmin=Math.min(zmin,v);zmax=Math.max(zmax,v);}});});
+    });
+    if(!isFinite(xmin)){xmin=-1;xmax=1;} if(!isFinite(ymin)){ymin=-1;ymax=1;} if(!isFinite(zmin)){zmin=-1;zmax=1;}
+    // честный масштаб по данным — без насильного включения нуля (раньше сплющивало поверхность)
+    return {xmin:xmin,xmax:xmax,ymin:ymin,ymax:ymax,zmin:zmin,zmax:zmax};
+}
+
+function draw3D(surfTraces, b) {
+    var pad = 0.06;
+    function r(lo, hi) { var s=(hi-lo)||1; return [lo-s*pad, hi+s*pad]; }
+    Plotly.react('plot', surfTraces, {
+        paper_bgcolor: C.surface, plot_bgcolor: C.surface,
+        font: {color: C.text, family: 'DM Sans,sans-serif'},
+        margin: {l:0, r:0, t:10, b:0}, showlegend: false,
+        scene: {
+            xaxis: Object.assign(axisStyle('x'), {range: r(b.xmin, b.xmax)}),
+            yaxis: Object.assign(axisStyle('y'), {range: r(b.ymin, b.ymax)}),
+            zaxis: Object.assign(axisStyle('z'), {range: r(b.zmin, b.zmax)}),
+            aspectmode: 'cube',
+            bgcolor: C.surface,
+            camera: DEFAULT_CAMERA,
+        },
+    }, {responsive: true, displaylogo: false});
+}
+
+function draw2D(traces, xRange) {
+    var xmin=xRange[0],xmax=xRange[1],ymin=Infinity,ymax=-Infinity;
+    traces.forEach(function(t){t.y.forEach(function(v){if(v!==null&&isFinite(v)){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v);}});});
+    if(!isFinite(ymin)){ymin=-1;ymax=1;}
+    xmin=Math.min(xmin,0);xmax=Math.max(xmax,0);ymin=Math.min(ymin,0);ymax=Math.max(ymax,0);
+    var xPad=(xmax-xmin)*0.1||1,yPad=(ymax-ymin)*0.1||1;
+    var xLo=xmin-xPad,xHi=xmax+xPad,yLo=ymin-yPad,yHi=ymax+yPad;
+    var ac=C.axisColor;
+    var axX={type:'scatter',mode:'lines',x:[xLo,xHi],y:[0,0],line:{color:ac,width:1.5},hoverinfo:'skip',showlegend:false};
+    var axY={type:'scatter',mode:'lines',x:[0,0],y:[yLo,yHi],line:{color:ac,width:1.5},hoverinfo:'skip',showlegend:false};
+    var arrows=[
+        {x:xHi,y:0,ax:xHi-(xHi-xLo)*0.05,ay:0,xref:'x',yref:'y',axref:'x',ayref:'y',showarrow:true,arrowhead:3,arrowsize:1.6,arrowwidth:2,arrowcolor:ac,text:''},
+        {x:0,y:yHi,ax:0,ay:yHi-(yHi-yLo)*0.05,xref:'x',yref:'y',axref:'x',ayref:'y',showarrow:true,arrowhead:3,arrowsize:1.6,arrowwidth:2,arrowcolor:ac,text:''},
+    ];
+    var labels={type:'scatter',mode:'text',x:[xHi,0],y:[0,yHi],text:['<b>x</b>','<b>y</b>'],
+        textfont:{size:15,color:ac},textposition:['middle right','top center'],
+        hoverinfo:'text',hovertext:['ось x','ось y'],showlegend:false};
+    Plotly.react('plot', traces.concat([axX,axY,labels]), {
+        paper_bgcolor: C.surface, plot_bgcolor: C.surface,
+        font: {color: C.text, family: 'DM Sans,sans-serif'},
+        margin: {l:40, r:40, t:20, b:40}, showlegend: false,
+        xaxis: {range:[xLo,xHi], gridcolor: C.grid, zeroline:false, showline:false, color:C.textDim},
+        yaxis: {range:[yLo,yHi], gridcolor: C.grid, zeroline:false, showline:false, color:C.textDim},
+        annotations: arrows,
+    }, {responsive:true, displaylogo:false});
+}
+
+function showErr(msg){document.getElementById('errMsg').textContent=msg?'⚠ '+msg:'';}
+function showNoGraph(v){document.getElementById('noGraph').classList.toggle('visible',v);}
+function showDesc(text,badge){
+    document.getElementById('descBadge').textContent=badge;
+    document.getElementById('descText').textContent=text;
+    document.getElementById('descBar').classList.add('visible');
+}
+function hideDesc(){document.getElementById('descBar').classList.remove('visible');}
+
+function plot() {
+    var btn=document.getElementById('btnPlot');
+    btn.disabled=true; btn.textContent='...';
+    showErr(''); showNoGraph(false); hideDesc();
+    var res=Math.min(200,Math.max(10,parseInt(document.getElementById('res').value)||60));
+    try {
+        if (mode==='2d') {
+            var xMin=parseFloat(document.getElementById('x2dMin').value);
+            var xMax=parseFloat(document.getElementById('x2dMax').value);
+            if(xMin>=xMax){showErr('Диапазон задан неверно');return;}
+            var fn=makeFn(document.getElementById('expr2d').value,['x','_u']);
+            var xs=linspace(xMin,xMax,res*3);
+            var ys=xs.map(function(x){try{var v=fn(x);return isFinite(v)?v:null;}catch(e){return null;}});
+            var hasData=ys.some(function(v){return v!==null;});
+            if(!hasData){showNoGraph(true);draw2D([],[xMin,xMax]);return;}
+            draw2D([{type:'scatter',mode:'lines',x:xs,y:ys,line:{color:C.accent,width:2.5}}],[xMin,xMax]);
+
+        } else if (mode3d==='surface') {
+            var xMin=parseFloat(document.getElementById('surfXMin').value);
+            var xMax=parseFloat(document.getElementById('surfXMax').value);
+            var yMin=parseFloat(document.getElementById('surfYMin').value);
+            var yMax=parseFloat(document.getElementById('surfYMax').value);
+            if(xMin>=xMax||yMin>=yMax){showErr('Диапазон задан неверно');return;}
+            var fn=makeFn(document.getElementById('exprSurf').value,['x','y']);
+            var xs=linspace(xMin,xMax,res),ys=linspace(yMin,yMax,res);
+            var zs=ys.map(function(y){return xs.map(function(x){try{var v=fn(x,y);return isFinite(v)?v:null;}catch(e){return null;}});});
+            var hasData=zs.some(function(row){return row.some(function(v){return v!==null;});});
+            if(!hasData){showNoGraph(true);draw3D([],{xmin:xMin,xmax:xMax,ymin:yMin,ymax:yMax,zmin:-1,zmax:1});return;}
+            var b=bounds3D([{x:xs.map(function(){return xs;}),y:ys.map(function(y){return Array(res).fill(y);}),z:zs}]);
+            draw3D([surfaceTrace(xs, ys, zs)], bounds3D([{x:zs.map(function(_,i){return xs;}),y:zs.map(function(_,i){return Array(res).fill(ys[i]);}),z:zs}]));
+
+        } else {
+            var uMin=parseFloat(document.getElementById('paramUMin').value);
+            var uMax=parseFloat(document.getElementById('paramUMax').value);
+            var vMin=parseFloat(document.getElementById('paramVMin').value);
+            var vMax=parseFloat(document.getElementById('paramVMax').value);
+            if(uMin>=uMax||vMin>=vMax){showErr('Диапазон задан неверно');return;}
+            var fnX=makeFn(document.getElementById('pxExpr').value,['u','v']);
+            var fnY=makeFn(document.getElementById('pyExpr').value,['u','v']);
+            var fnZ=makeFn(document.getElementById('pzExpr').value,['u','v']);
+            var us=linspace(uMin,uMax,res),vs=linspace(vMin,vMax,res);
+            var xs2=[],ys2=[],zs2=[];
+            vs.forEach(function(v){
+                var rx=[],ry=[],rz=[];
+                us.forEach(function(u){
+                    try{var vx=fnX(u,v),vy=fnY(u,v),vz=fnZ(u,v);rx.push(isFinite(vx)?vx:null);ry.push(isFinite(vy)?vy:null);rz.push(isFinite(vz)?vz:null);}
+                    catch(e){rx.push(null);ry.push(null);rz.push(null);}
+                });
+                xs2.push(rx);ys2.push(ry);zs2.push(rz);
+            });
+            draw3D([surfaceTrace(xs2, ys2, zs2)], bounds3D([{x:xs2,y:ys2,z:zs2}]));
+        }
+    } catch(e) {
+        showErr(e.message);
+    } finally {
+        btn.disabled=false; btn.textContent='Построить';
+    }
+}
+
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.tagName==='INPUT')plot();});
+renderExamples();
+</script>
+</body>
+</html>

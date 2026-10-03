@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Просмотр модуля — VisualMath</title>
+<link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+<script>MathJax={loader:{load:['[tex]/boldsymbol']},tex:{packages:{'[+]':['boldsymbol']},inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]}};</script>
+<script id="MathJax-script" async src="/static/vendor/mathjax/es5/tex-mml-chtml.js"></script>
+<script src="/static/js/format-text.js"></script>
+<script src="/static/vendor/plotly/plotly-2.27.0.min.js"></script>
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--border:#e4e7ec;--text:#1a1d23;--muted:#6b7280;--accent:#2563eb;--accent-hover:#1d4ed8;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:'Lora',serif;font-weight:600;font-size:18px;color:var(--text);text-decoration:none;}
+.topbar-back{font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px;}
+.topbar-back:hover{color:var(--text);}
+
+.shell{display:flex;min-height:calc(100vh - 56px);}
+
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;}
+.sb-section{margin-bottom:4px;}
+.sb-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 20px 4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:8px 20px;font-size:14px;color:var(--text);text-decoration:none;transition:background .15s;}
+.sb-link:hover{background:var(--bg);color:var(--accent);}
+.sb-link svg{flex-shrink:0;}
+
+.main{flex:1;padding:28px 32px;max-width:900px;}
+
+.card{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:28px;margin-bottom:20px;}
+.card-header{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.module-title-text{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:12px;}
+.module-meta-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.meta-chip{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);}
+
+.type-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 7px;border-radius:20px;font-size:12px;font-weight:600;}
+.type-badge svg{flex-shrink:0;}
+.type-text{background:#dcfce7;color:#166534;}
+.type-visual{background:#dbeafe;color:#1e40af;}
+.type-question{background:#fef9c3;color:#713f12;}
+.type-test{background:#ede9fe;color:#5b21b6;}
+
+.content-area{line-height:1.7;}
+.latex-content{font-family:'Lora',serif;font-size:17px;line-height:1.8;color:var(--text);}
+
+.question-block{background:var(--bg);border-radius:10px;padding:20px;margin-bottom:12px;border:1px solid var(--border);}
+.question-text{font-size:16px;font-weight:600;margin-bottom:14px;color:var(--text);}
+/* align-items:flex-start — текст ответа теперь обёрнут в .answer-text и может
+   занимать несколько строк; маркер ✓ держим у верхней строки. */
+.answer-chip{display:flex;align-items:flex-start;gap:10px;border:2px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;background:var(--surface);}
+.answer-chip.answer-correct{border-color:#16a34a;background:#f0fdf4;}
+.correct-mark{color:#16a34a;font-weight:700;font-size:16px;flex-shrink:0;}
+.correct-mark-empty{width:16px;flex-shrink:0;}
+/* Обёртка текста ответа: min-width:0 даёт flex-элементу сжиматься (иначе
+   текст+формулы-острова раскладываются в один НЕпереносимый ряд и вылезают).
+   overflow-x:auto — широкая инлайн-формула скроллится внутри варианта. */
+.answer-text{flex:1;min-width:0;overflow-wrap:anywhere;overflow-x:auto;}
+.answer-text mjx-container{max-width:100%;}
+/* display-формулы ($$…$$) в вопросе/тексте — прокручиваются, а не вылезают */
+.question-text mjx-container[display="true"],
+.latex-content mjx-container[display="true"]{display:block;overflow-x:auto;overflow-y:hidden;max-width:100%;}
+
+.actions-row{display:flex;gap:12px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .15s,box-shadow .15s;}
+.btn:hover{opacity:.9;}
+.btn-back{background:var(--bg);color:var(--text);border:1px solid var(--border);}
+.btn-edit{background:var(--accent);color:#fff;}
+.btn-delete{background:#fee2e2;color:#dc2626;}
+.btn-delete:hover{background:#fecaca;}
+
+.loading-state{text-align:center;padding:60px;color:var(--muted);}
+</style>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/ui.js"></script>
+  <script src="/static/js/breadcrumbs.js"></script>
+  <script src="/static/js/search.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <a href="/dashboard" class="topbar-logo">VisualMath</a>
+  <a href="/modules" class="topbar-back">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Назад к библиотеке
+  </a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Общее</div>
+      <a href="/dashboard" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Контент</div>
+      <a href="/modules" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Библиотека модулей
+      </a>
+      <a href="/lectures" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Мои лекции
+      </a>
+      <a href="/lectures/launch" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+        Начать лекцию
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Classroom</div>
+      <a href="/classroom/subjects" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Мои предметы
+      </a>
+      <a href="/classroom/subjects/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Создать предмет
+      </a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Создание</div>
+      <a href="/modules/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Создать модуль
+      </a>
+      <a href="/lectures/create" class="sb-link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать лекцию
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div id="loadingCard" class="card loading-state">Загрузка модуля...</div>
+
+    <div id="moduleCard" class="card" style="display:none">
+      <div class="card-header" id="moduleHeader"></div>
+      <div class="content-area" id="moduleContent"></div>
+    </div>
+
+    <div id="actionsCard" class="card" style="display:none;padding:20px 28px;">
+      <div class="actions-row">
+        <a href="/modules" class="btn btn-back">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          К библиотеке
+        </a>
+        <a id="editBtn" href="#" class="btn btn-edit" style="display:none">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Редактировать
+        </a>
+        <button class="btn btn-delete" id="deleteBtn" style="display:none" onclick="deleteModule()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Удалить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const moduleId = '{{.ModuleID}}';
+// Авторизация XHR через Bearer из localStorage + cookie как fallback.
+const token = localStorage.getItem('token') || '';
+function authHeaders() { return token ? { 'Authorization': 'Bearer ' + token } : {}; }
+
+async function loadModule() {
+    try {
+        const resp = await fetch('/api/modules/' + moduleId, { headers: authHeaders() });
+        if (!resp.ok) {
+            document.getElementById('loadingCard').innerHTML = '<p style="color:#dc2626">Модуль не найден</p>';
+            return;
+        }
+        const m = await resp.json();
+        renderModule(m);
+    } catch(e) {
+        document.getElementById('loadingCard').innerHTML = '<p style="color:#dc2626">Ошибка загрузки: ' + e.message + '</p>';
+    }
+}
+
+function renderGraph3D(containerId, cfg) {
+    if (!window.Plotly || !cfg) return;
+    var res = cfg.res || 50;
+    function pyToJs(e){return e.replace(/\*\*/g,'^').replace(/\bsin\b/g,'Math.sin').replace(/\bcos\b/g,'Math.cos').replace(/\btan\b/g,'Math.tan').replace(/\bsqrt\b/g,'Math.sqrt').replace(/\bexp\b/g,'Math.exp').replace(/\blog10\b/g,'Math.log10').replace(/\blog\b/g,'Math.log').replace(/\babs\b/g,'Math.abs').replace(/\bpi\b/g,'Math.PI').replace(/\be\b/g,'Math.E').replace(/\^/g,'**');}
+    function makeFn(e,v){return new Function(v[0],v[1]||'_','"use strict";return('+pyToJs(e)+');');}
+    function linspace(a,b,n){var arr=new Array(n),s=(b-a)/(n-1);for(var i=0;i<n;i++)arr[i]=a+i*s;return arr;}
+    var cs=[[0,'#dbeafe'],[0.3,'#93c5fd'],[0.55,'#3b82f6'],[0.78,'#1d4ed8'],[1,'#172554']];
+    var ax={showbackground:true,backgroundcolor:'rgba(241,245,249,0.6)',gridcolor:'#cbd5e1',showline:true,linecolor:'#374151',linewidth:2,zeroline:true,zerolinecolor:'#64748b',nticks:6,tickfont:{size:10,color:'#6b7280'},showspikes:false};
+    function surf3d(x,y,z){return {type:'surface',x:x,y:y,z:z,colorscale:cs,opacity:1,showscale:false,
+        lighting:{ambient:0.62,diffuse:0.9,specular:0.18,roughness:0.45,fresnel:0.15},lightposition:{x:100,y:200,z:300},
+        contours:{z:{show:true,usecolormap:true,width:2,project:{z:true}}}};}
+    var layout3d={paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'DM Sans,sans-serif',color:'#1a1d23'},margin:{l:0,r:0,t:10,b:0},showlegend:false,
+        scene:{xaxis:Object.assign({title:{text:'x',font:{size:11}}},ax),yaxis:Object.assign({title:{text:'y',font:{size:11}}},ax),zaxis:Object.assign({title:{text:'z',font:{size:11}}},ax),aspectmode:'cube',bgcolor:'#fff',camera:{eye:{x:1.6,y:1.6,z:1.2}}}};
+    var opts={responsive:true,displaylogo:false};
+    try {
+        if (cfg.mode === '2d') {
+            var xs=linspace(cfg.xMin,cfg.xMax,res*3),fn=makeFn(cfg.expr,['x','_']);
+            var ys=xs.map(function(x){try{var v=fn(x);return isFinite(v)?v:null;}catch(e){return null;}});
+            Plotly.react(containerId,[{type:'scatter',mode:'lines',x:xs,y:ys,line:{color:'#2563eb',width:2.5}}],
+                {paper_bgcolor:'#fff',plot_bgcolor:'#f8fafc',font:{family:'DM Sans,sans-serif'},margin:{l:50,r:20,t:20,b:50},showlegend:false,
+                xaxis:{gridcolor:'#e4e7ec',title:{text:'x'},tickfont:{size:10}},yaxis:{gridcolor:'#e4e7ec',title:{text:'y'},tickfont:{size:10}}},opts);
+        } else if (cfg.mode === 'surface') {
+            var xs=linspace(cfg.xMin,cfg.xMax,res),ys=linspace(cfg.yMin,cfg.yMax,res),fn=makeFn(cfg.expr,['x','y']);
+            var zs=ys.map(function(y){return xs.map(function(x){try{var v=fn(x,y);return isFinite(v)?v:null;}catch(e){return null;}});});
+            Plotly.react(containerId,[surf3d(xs,ys,zs)],layout3d,opts);
+        } else if (cfg.mode === 'param') {
+            var us=linspace(cfg.uMin,cfg.uMax,res),vs=linspace(cfg.vMin,cfg.vMax,res);
+            var fnX=makeFn(cfg.px,['u','v']),fnY=makeFn(cfg.py,['u','v']),fnZ=makeFn(cfg.pz,['u','v']);
+            var xs2=[],ys2=[],zs2=[];
+            vs.forEach(function(v){var rx=[],ry=[],rz=[];us.forEach(function(u){try{rx.push(fnX(u,v));ry.push(fnY(u,v));rz.push(fnZ(u,v));}catch(e){rx.push(null);ry.push(null);rz.push(null);}});xs2.push(rx);ys2.push(ry);zs2.push(rz);});
+            Plotly.react(containerId,[surf3d(xs2,ys2,zs2)],layout3d,opts);
+        }
+    } catch(e) { console.error('graph3d render:', e); }
+}
+
+function renderModule(m) {
+    function graph3dLabel(c) {
+        if (!c) return 'График';
+        if (c.mode === '2d') return '2D График';
+        if (c.mode === 'param') return '3D Параметрич.';
+        return '3D График';
+    }
+    const typeLabels = { text: 'Текстовый', question: 'Вопросник', test: 'Тестовый' };
+    const typeClasses = { text: 'type-text', question: 'type-question', test: 'type-test', graph3d: 'type-visual' };
+    const typeIcons = {
+        text:     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        question: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        test:     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',
+        graph3d:  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    };
+
+    document.getElementById('moduleHeader').innerHTML =
+        '<div class="module-title-text">' + m.title + '</div>' +
+        '<div class="module-meta-row">' +
+        '<span class="type-badge ' + (typeClasses[m.type] || '') + '">' + (typeIcons[m.type]||'') + (m.type === 'graph3d' ? graph3dLabel(m.content) : (typeLabels[m.type] || m.type)) + '</span>' +
+        '<span class="meta-chip"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>' + (m.course || '') + '</span>' +
+        '<span class="meta-chip"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' + (m.author || 'Неизвестен') + '</span>' +
+        (m.created_at ? '<span class="meta-chip"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + m.created_at + '</span>' : '') +
+        '</div>';
+
+    let contentHtml = '';
+    const c = m.content;
+
+    if (m.type === 'text') {
+        contentHtml = '<div class="latex-content">' + formatText(c && c.text ? c.text : JSON.stringify(c)) + '</div>';
+    } else if ((m.type === 'test' || m.type === 'question') && c) {
+        // poll format: {question, options}
+        if (c.question !== undefined && c.options) {
+            contentHtml += '<div class="question-block"><p class="question-text">' + formatText(c.question) + '</p>';
+            c.options.forEach(function(opt) {
+                contentHtml += '<div class="answer-chip"><span class="correct-mark-empty"></span><span class="answer-text">' + formatText(opt) + '</span></div>';
+            });
+            contentHtml += '</div>';
+        } else {
+            // array format: [{question, answers, correct}]
+            const questions = Array.isArray(c) ? c : (c.questions || []);
+            questions.forEach(function(q, i) {
+                contentHtml += '<div class="question-block">' +
+                    '<p class="question-text">' + (i+1) + '. ' + formatText(q.question) + '</p>';
+                if (q.answers) {
+                    const correctArr = Array.isArray(q.correct) ? q.correct : (q.correct !== undefined ? [q.correct] : []);
+                    q.answers.forEach(function(a, idx) {
+                        const isCorrect = correctArr.includes(idx);
+                        contentHtml += '<div class="answer-chip' + (isCorrect ? ' answer-correct' : '') + '">' +
+                            (isCorrect ? '<span class="correct-mark">✓</span>' : '<span class="correct-mark-empty"></span>') +
+                            '<span class="answer-text">' + formatText(a) + '</span></div>';
+                    });
+                }
+                contentHtml += '</div>';
+            });
+        }
+    } else if (m.type === 'graph3d' && c) {
+        contentHtml = '<div id="graph3d-view" style="height:480px;border-radius:10px;overflow:hidden;border:1px solid var(--border)"></div>';
+    } else {
+        contentHtml = '<pre style="font-size:13px;white-space:pre-wrap;color:var(--muted);font-family:monospace">' + JSON.stringify(c, null, 2) + '</pre>';
+    }
+
+    document.getElementById('moduleContent').innerHTML = contentHtml;
+
+    if (m.type === 'graph3d' && c) {
+        renderGraph3D('graph3d-view', typeof c === 'string' ? JSON.parse(c) : c);
+    }
+
+    document.getElementById('deleteBtn').style.display = 'inline-flex';
+    const editBtn = document.getElementById('editBtn');
+    editBtn.href = '/modules/edit/' + m.id;
+    editBtn.style.display = 'inline-flex';
+
+    document.getElementById('loadingCard').style.display = 'none';
+    document.getElementById('moduleCard').style.display = 'block';
+    document.getElementById('actionsCard').style.display = 'block';
+
+    if (window.MathJax) MathJax.typesetPromise();
+}
+
+function deleteModule() {
+    vmConfirm({
+        title: 'Удалить модуль?',
+        message: 'Модуль будет убран из всех лекций. Это действие нельзя отменить.',
+        danger: true,
+        onConfirm: function() {
+            fetch('/api/modules/' + moduleId, { method: 'DELETE', headers: authHeaders() })
+                .then(r => r.json())
+                .then(d => { if (d.success || d.ok) { window.location.href = '/modules'; } });
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', loadModule);
+</script>
+</body>
+</html>

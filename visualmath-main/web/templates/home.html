@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisualMath - Интерактивная математика</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .hero {
+            text-align: center;
+            padding: 80px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .features {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 50px 0;
+            flex-wrap: wrap;
+        }
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 250px;
+            text-align: center;
+        }
+        .buttons {
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn.secondary {
+            background: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>🎓 VisualMath Platform</h1>
+        <p>Интерактивная платформа для изучения математики</p>
+        <div class="buttons">
+            <a href="/login" class="btn secondary">Войти</a>
+            <a href="/register" class="btn">Регистрация</a>
+        </div>
+    </div>
+    
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <h2 style="text-align: center;">Возможности платформы</h2>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>👨‍🎓 Для студентов</h3>
+                <p>Доступ к библиотеке лекций</p>
+                <p>Поиск по материалам</p>
+                <p>Интерактивные задания</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>👨‍🏫 Для преподавателей</h3>
+                <p>Создание модулей и лекций</p>
+                <p>Библиотека материалов</p>
+                <p>Проверочные блоки</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📚 Материалы</h3>
+                <p>Математический анализ</p>
+                <p>Линейная алгебра</p>
+                <p>Дискретная математика</p>
+                <p>Экономика</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 50px 0;">
+            <h3>Быстрый старт</h3>
+            <p>1. Зарегистрируйтесь как студент или преподаватель</p>
+            <p>2. Изучите доступные материалы</p>
+            <p>3. Создавайте свои учебные модули</p>
+        </div>
+    </div>
+    
+    <script>
+        // Проверяем, есть ли сообщение об ошибке в URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        if (error) {
+            alert('Ошибка: ' + error);
+        }
+    </script>
+</body>
+</html>
